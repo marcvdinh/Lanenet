@@ -210,8 +210,8 @@ class ENETFCN(CNN_layers.CNN_blocks):
 
                         instance_net = self.bottleneck(self,instance_net, output_depth=16, filter_size=3, name=bottleneck_name_name + '_1')
                         # =============FINAL CONVOLUTION=============
-                        instance_logits = tf.contrib.layers.conv2d_transpose(instance_net, 64, [2, 2],
-                                                                    stride=2, scope='fullconv')
+                        instance_logits = tf.contrib.layers.conv2d_transpose(instance_net, 4, [2, 2],
+                                                                    stride=2, scope='fullconv')  #embedding dimension of 4 according to paper
                 self._net_intermediate_results['instance_segment_logits'] = {
                     'data': instance_logits,
                     'shape': instance_logits.get_shape().as_list()
