@@ -8,11 +8,11 @@
 """
 LaneNet frontend branch which is mainly used for feature extraction
 """
-from ENet import CNN_layers
-from ENet import enet_fcn
+from semantic_segmentation_zoo import cnn_basenet
+from semantic_segmentation_zoo import enet_fcn, vgg16_based_fcn
 
 
-class LaneNetFrondEnd(CNN_layers.CNN_blocks):
+class LaneNetFrondEnd(cnn_basenet.CNNBaseModel):
     """
     LaneNet frontend which is used to extract image features for following process
     """
@@ -22,9 +22,14 @@ class LaneNetFrondEnd(CNN_layers.CNN_blocks):
         """
         super(LaneNetFrondEnd, self).__init__()
 
-        self._frontend_net_map = {
-            'enet': enet_fcn.ENETFCN(phase=phase)
-        }
+        if net_flag=='vgg':
+            self._frontend_net_map = {
+                'vgg': vgg16_based_fcn.VGG16FCN(phase=phase)
+            }
+        elif net_flag=='enet':
+            self._frontend_net_map = {
+                'enet': enet_fcn.ENETFCN(phase=phase)
+            }
 
         self._net = self._frontend_net_map[net_flag]
 

@@ -13,12 +13,12 @@ import tensorflow as tf
 from config import global_config
 from lanenet_model import lanenet_back_end
 from lanenet_model import lanenet_front_end
-from ENet import CNN_layers
+from semantic_segmentation_zoo import cnn_basenet
 
 CFG = global_config.cfg
 
 
-class LaneNet(CNN_layers.CNN_blocks):
+class LaneNet(cnn_basenet.CNNBaseModel):
     """
 
     """

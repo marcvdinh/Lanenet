@@ -12,12 +12,12 @@ import tensorflow as tf
 
 from config import global_config
 from lanenet_model import lanenet_discriminative_loss
-from ENet import CNN_layers
+from semantic_segmentation_zoo import cnn_basenet
 
 CFG = global_config.cfg
 
 
-class LaneNetBackEnd(CNN_layers.CNN_blocks):
+class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
     """
     LaneNet backend branch which is mainly used for binary and instance segmentation loss calculation
     """

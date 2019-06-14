@@ -1,13 +1,13 @@
 import collections
 import tensorflow as tf
 import numpy
-from ENet import CNN_layers
+from semantic_segmentation_zoo import cnn_basenet
 from config import global_config
 
 CFG = global_config.cfg
 
 
-class ENETFCN(CNN_layers.CNN_blocks):
+class ENETFCN(cnn_basenet.CNNBaseModel):
     def __init__(self, phase):
         """
 
