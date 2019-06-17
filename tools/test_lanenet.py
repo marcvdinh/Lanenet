@@ -32,6 +32,7 @@ def init_args():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('--image_path', type=str, help='The image path or the src image save dir')
+    parser.add_argument('--net_flag', type=str, help='The backend to use for segmentation')
     parser.add_argument('--weights_path', type=str, help='The model weights path')
 
     return parser.parse_args()
@@ -66,7 +67,7 @@ def minmax_scale(input_arr):
     return output_arr
 
 
-def test_lanenet(image_path, weights_path):
+def test_lanenet(image_path, weights_path, net_flag):
     """
 
     :param image_path:
@@ -85,7 +86,7 @@ def test_lanenet(image_path, weights_path):
 
     input_tensor = tf.placeholder(dtype=tf.float32, shape=[1, 256, 512, 3], name='input_tensor')
 
-    net = lanenet.LaneNet(phase='test', net_flag='enet')
+    net = lanenet.LaneNet(phase='test', net_flag=net_flag)
     binary_seg_ret, instance_seg_ret = net.inference(input_tensor=input_tensor, name='lanenet_model')
 
     postprocessor = lanenet_postprocess.LaneNetPostProcessor()
