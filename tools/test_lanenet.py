@@ -32,8 +32,9 @@ def init_args():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('--image_path', type=str, help='The image path or the src image save dir')
-    parser.add_argument('--net_flag', type=str, help='The backend to use for segmentation')
     parser.add_argument('--weights_path', type=str, help='The model weights path')
+    parser.add_argument('--net_flag', type=str, default='enet',
+                        help='The net flag which determins the net\'s architecture')
 
     return parser.parse_args()
 
@@ -67,7 +68,7 @@ def minmax_scale(input_arr):
     return output_arr
 
 
-def test_lanenet(image_path, weights_path, net_flag):
+def test_lanenet(image_path, weights_path, net_flag='enet'):
     """
 
     :param image_path:
