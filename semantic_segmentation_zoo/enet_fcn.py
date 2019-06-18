@@ -162,27 +162,27 @@ class ENETFCN(cnn_basenet.CNNBaseModel):
             }
 
             with tf.variable_scope('instance_seg'):
-
-                with tf.contrib.framework.arg_scope([self.bottleneck], regularizer_prob=0.1):
-                    # ===================STAGE THREE========================
-                    instance_net = self.bottleneck(self,net, output_depth=128, filter_size=3, name='bottleneck' + '3_1')
-                    instance_net = self.bottleneck(self,instance_net, output_depth=128, filter_size=3, dilated=True, dilation_rate=2,
+                with tf.contrib.framework.arg_scope([self.bottleneck], training=self._is_training):
+                    with tf.contrib.framework.arg_scope([self.bottleneck], regularizer_prob=0.1):
+                        # ===================STAGE THREE========================
+                        instance_net = self.bottleneck(self,net, output_depth=128, filter_size=3, name='bottleneck' + '3_1')
+                        instance_net = self.bottleneck(self,instance_net, output_depth=128, filter_size=3, dilated=True, dilation_rate=2,
                           name='bottleneck' + '3_2')
-                    instance_net = self.bottleneck(self,instance_net, output_depth=128, filter_size=5, asymmetric=True,
+                        instance_net = self.bottleneck(self,instance_net, output_depth=128, filter_size=5, asymmetric=True,
                           name='bottleneck' + '3_3')
-                    instance_net = self.bottleneck(self,instance_net, output_depth=128, filter_size=3, dilated=True, dilation_rate=4,
+                        instance_net = self.bottleneck(self,instance_net, output_depth=128, filter_size=3, dilated=True, dilation_rate=4,
                           name='bottleneck' + '3_4')
-                    instance_net = self.bottleneck(self,instance_net, output_depth=128, filter_size=3, name='bottleneck' + '3_5')
-                    instance_net = self.bottleneck(self,instance_net, output_depth=128, filter_size=3, dilated=True, dilation_rate=8,
+                        instance_net = self.bottleneck(self,instance_net, output_depth=128, filter_size=3, name='bottleneck' + '3_5')
+                        instance_net = self.bottleneck(self,instance_net, output_depth=128, filter_size=3, dilated=True, dilation_rate=8,
                           name='bottleneck' + '3_6')
-                    instance_net = self.bottleneck(self,instance_net, output_depth=128, filter_size=5, asymmetric=True,
+                        instance_net = self.bottleneck(self,instance_net, output_depth=128, filter_size=5, asymmetric=True,
                           name='bottleneck' + '3_7')
-                    instance_net = self.bottleneck(self,instance_net, output_depth=128, filter_size=3, dilated=True, dilation_rate=16,
+                        instance_net = self.bottleneck(self,instance_net, output_depth=128, filter_size=3, dilated=True, dilation_rate=16,
                           name='bottleneck' + '_38')
 
-                # =====================DECODER==========================
+                    # =====================DECODER==========================
 
-                with tf.contrib.framework.arg_scope([self.bottleneck], regularizer_prob=0.1, decoder=True):
+                    with tf.contrib.framework.arg_scope([self.bottleneck], regularizer_prob=0.1, decoder=True):
                         # ===================STAGE FOUR========================
                         bottleneck_name_name = "bottleneck4"
 
