@@ -96,33 +96,34 @@ class ENETFCN(cnn_basenet.CNNBaseModel):
     def _enet_fcn_decode(self, name='decode', skip_connections=True):
 
         with tf.variable_scope(name):
-            net = self._net_intermediate_results['shared_encoding']['net']
-            net_one = self._net_intermediate_results['shared_encoding']['net1']
-            net_two = self._net_intermediate_results['shared_encoding']['net2']
-            pooling_indices_1 = self._net_intermediate_results['shared_encoding']['pooling_indices_1']
-            pooling_indices_2 = self._net_intermediate_results['shared_encoding']['pooling_indices_2']
-            inputs_shape_1 = self._net_intermediate_results['shared_encoding']['inputs_shape_1']
-            inputs_shape_2 = self._net_intermediate_results['shared_encoding']['inputs_shape_2']
+            with tf.contrib.framework.arg_scope([self.bottleneck], training=self._is_training):
+                net = self._net_intermediate_results['shared_encoding']['net']
+                net_one = self._net_intermediate_results['shared_encoding']['net1']
+                net_two = self._net_intermediate_results['shared_encoding']['net2']
+                pooling_indices_1 = self._net_intermediate_results['shared_encoding']['pooling_indices_1']
+                pooling_indices_2 = self._net_intermediate_results['shared_encoding']['pooling_indices_2']
+                inputs_shape_1 = self._net_intermediate_results['shared_encoding']['inputs_shape_1']
+                inputs_shape_2 = self._net_intermediate_results['shared_encoding']['inputs_shape_2']
 
-            with tf.variable_scope('binary_seg'):
-                with tf.contrib.framework.arg_scope([self.bottleneck], regularizer_prob=0.1):
-                # ===================STAGE THREE========================
-                    binary_net = self.bottleneck(self,net, output_depth=128, filter_size=3, name='bottleneck'  + '3_1')
-                    binary_net = self.bottleneck(self,binary_net, output_depth=128, filter_size=3, dilated=True, dilation_rate=2,
+                with tf.variable_scope('binary_seg'):
+                    with tf.contrib.framework.arg_scope([self.bottleneck], regularizer_prob=0.1):
+                    # ===================STAGE THREE========================
+                        binary_net = self.bottleneck(self,net, output_depth=128, filter_size=3, name='bottleneck'  + '3_1')
+                        binary_net = self.bottleneck(self,binary_net, output_depth=128, filter_size=3, dilated=True, dilation_rate=2,
                                           name='bottleneck'  + '3_2')
-                    binary_net = self.bottleneck(self,binary_net, output_depth=128, filter_size=5, asymmetric=True,
+                        binary_net = self.bottleneck(self,binary_net, output_depth=128, filter_size=5, asymmetric=True,
                                           name='bottleneck'  + '3_3')
-                    binary_net = self.bottleneck(self,binary_net, output_depth=128, filter_size=3, dilated=True, dilation_rate=4,
+                        binary_net = self.bottleneck(self,binary_net, output_depth=128, filter_size=3, dilated=True, dilation_rate=4,
                                           name='bottleneck'  + '3_4')
-                    binary_net = self.bottleneck(self,binary_net, output_depth=128, filter_size=3, name='bottleneck'  + '3_5')
-                    binary_net = self.bottleneck(self,binary_net, output_depth=128, filter_size=3, dilated=True, dilation_rate=8,
+                        binary_net = self.bottleneck(self,binary_net, output_depth=128, filter_size=3, name='bottleneck'  + '3_5')
+                        binary_net = self.bottleneck(self,binary_net, output_depth=128, filter_size=3, dilated=True, dilation_rate=8,
                                           name='bottleneck'  + '3_6')
-                    binary_net = self.bottleneck(self,binary_net, output_depth=128, filter_size=5, asymmetric=True,
+                        binary_net = self.bottleneck(self,binary_net, output_depth=128, filter_size=5, asymmetric=True,
                                           name='bottleneck'  + '3_7')
-                    binary_net = self.bottleneck(self,binary_net, output_depth=128, filter_size=3, dilated=True, dilation_rate=16,
+                        binary_net = self.bottleneck(self,binary_net, output_depth=128, filter_size=3, dilated=True, dilation_rate=16,
                                           name='bottleneck'  + '_38')
 
-            #=====================DECODER==========================
+                    #=====================DECODER==========================
 
                     with tf.contrib.framework.arg_scope([self.bottleneck], regularizer_prob=0.1, decoder=True):
                         # ===================STAGE FOUR========================
@@ -211,7 +212,7 @@ class ENETFCN(cnn_basenet.CNNBaseModel):
                         instance_net = self.bottleneck(self,instance_net, output_depth=16, filter_size=3, name=bottleneck_name_name + '_1')
                         # =============FINAL CONVOLUTION=============
                         instance_logits = tf.contrib.layers.conv2d_transpose(instance_net, 4, [2, 2],
-                                                                    stride=2, scope='fullconv')  #embedding dimension of 4 according to paper
+                                                                    stride=2, scope='fullconv')  #nb of filters tested [4,64]
                 self._net_intermediate_results['instance_segment_logits'] = {
                     'data': instance_logits,
                     'shape': instance_logits.get_shape().as_list()

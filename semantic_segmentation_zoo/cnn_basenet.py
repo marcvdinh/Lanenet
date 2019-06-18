@@ -260,16 +260,16 @@ class CNNBaseModel(object):
         return tf.nn.batch_normalization(inputdata, mean, var, beta, gamma, epsilon, name=name)
 
     @staticmethod
-    def dropout(inputdata, keep_prob, noise_shape=None, name=None):
+    def dropout(inputdata, rate, noise_shape=None, name=None):
         """
 
         :param name:
         :param inputdata:
-        :param keep_prob:
+        :param rate:
         :param noise_shape:
         :return:
         """
-        return tf.nn.dropout(inputdata, keep_prob=keep_prob, noise_shape=noise_shape, name=name)
+        return tf.nn.dropout(inputdata, rate=rate, noise_shape=noise_shape, name=name)
 
     @staticmethod
     def fullyconnect(inputdata, out_dim, w_init=None, b_init=None,
@@ -451,11 +451,11 @@ class CNNBaseModel(object):
         return ret
 
     @staticmethod
-    def spatial_dropout(input_tensor, keep_prob, is_training, name, seed=1234):
+    def spatial_dropout(input_tensor, rate, is_training, name, seed=1234):
         """
         空间dropout实现
         :param input_tensor:
-        :param keep_prob:
+        :param rate:
         :param is_training:
         :param name:
         :param seed:
@@ -465,7 +465,7 @@ class CNNBaseModel(object):
         def f1():
             input_shape = input_tensor.get_shape().as_list()
             noise_shape = tf.constant(value=[input_shape[0], 1, 1, input_shape[3]])
-            return tf.nn.dropout(input_tensor, keep_prob, noise_shape, seed=seed, name="spatial_dropout")
+            return tf.nn.dropout(input_tensor, rate, noise_shape, seed=seed, name="spatial_dropout")
 
         def f2():
             return input_tensor
@@ -473,7 +473,7 @@ class CNNBaseModel(object):
         with tf.variable_scope(name_or_scope=name):
 
             #output = tf.cond(is_training, f1, f2)
-            if is_training is not None:
+            if is_training is True:
                 output = f1()
             else:
                 output = f2()
@@ -605,7 +605,7 @@ class CNNBaseModel(object):
                 net = self.prelu(net, name=name + '_prelu3')
 
                 # Regularizer
-                net = self.spatial_dropout(net, keep_prob=1 - regularizer_prob, seed=seed, is_training=training,
+                net = self.spatial_dropout(net, rate=1 - regularizer_prob, seed=seed, is_training=training,
                                            name=name + '_spatial_dropout')
 
                 # Finally, combine the two branches together via an element-wise addition
@@ -643,7 +643,7 @@ class CNNBaseModel(object):
                 net = self.prelu(net, name=name + '_prelu3')
 
                 # Regularizer
-                net = self.spatial_dropout(net, keep_prob=1 - regularizer_prob, seed=seed, is_training=training,
+                net = self.spatial_dropout(net, rate=1 - regularizer_prob, seed=seed, is_training=training,
                                            name=name + '_spatial_dropout')
                 net = self.prelu(net, name=name + '_prelu4')
 
@@ -678,7 +678,7 @@ class CNNBaseModel(object):
                 net = self.prelu(net, name=name + '_prelu3')
 
                 # Regularizer
-                net = self.spatial_dropout(net, keep_prob=1 - regularizer_prob, seed=seed, is_training=training,
+                net = self.spatial_dropout(net, rate=1 - regularizer_prob, seed=seed, is_training=training,
                                            name=name + '_spatial_dropout')
                 net = self.prelu(net, name=name + '_prelu4')
 
@@ -733,7 +733,7 @@ class CNNBaseModel(object):
                 net = self.prelu(net, name=name + '_relu3')
 
                 # Regularizer
-                net = self.spatial_dropout(net, keep_prob=1 - regularizer_prob, seed=seed, is_training=training,
+                net = self.spatial_dropout(net, rate=1 - regularizer_prob, seed=seed, is_training=training,
                                            name=name + '_spatial_dropout')
                 net = self.prelu(net, name=name + '_prelu4')
 
@@ -764,7 +764,7 @@ class CNNBaseModel(object):
             net = self.prelu(net, name=name + '_prelu3')
 
             # Regularizer
-            net = self.spatial_dropout(net, keep_prob=1 - regularizer_prob, seed=seed, is_training=training, name=name + '_spatial_dropout')
+            net = self.spatial_dropout(net, rate=1 - regularizer_prob, seed=seed, is_training=training, name=name + '_spatial_dropout')
             net = self.prelu(net, name=name + '_prelu4')
 
             # Add the main branch
