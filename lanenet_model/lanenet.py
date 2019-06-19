@@ -34,7 +34,7 @@ class LaneNet(cnn_basenet.CNNBaseModel):
             phase=phase, net_flag=net_flag
         )
         self._backend = lanenet_back_end.LaneNetBackEnd(
-            phase=phase
+            phase=phase, net_flag=net_flag
         )
 
     def inference(self, input_tensor, name):

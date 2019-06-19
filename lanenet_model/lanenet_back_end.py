@@ -21,7 +21,7 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
     """
     LaneNet backend branch which is mainly used for binary and instance segmentation loss calculation
     """
-    def __init__(self, phase):
+    def __init__(self, phase, net_flag):
         """
         init lanenet backend
         :param phase: train or test
@@ -29,6 +29,7 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
         super(LaneNetBackEnd, self).__init__()
         self._phase = phase
         self._is_training = self._is_net_for_training()
+        self._net_flag = net_flag
 
     def _is_net_for_training(self):
         """
@@ -108,18 +109,21 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
 
             # calculate class weighted instance seg loss
             with tf.variable_scope(name_or_scope='instance_seg'):
+                if self._net_flag == 'vgg':
+                    pix_bn = tf.layers.batch_normalization(
+                        inputs=instance_seg_logits, training=self._is_training, name='pix_bn')
+                    pix_relu = tf.nn.relu(pix_bn, name='pix_relu')
+                    pix_embedding = tf.layers.conv2d(
+                        inputs=pix_relu,
+                        filters=CFG.TRAIN.EMBEDDING_FEATS_DIMS,
+                        padding='SAME',
+                        kernel_size=1,
+                        use_bias=False,
+                        name='pix_embedding_conv'
+                    )
+                elif self._net_flag == 'enet':
+                    pix_embedding = instance_seg_logits
 
-                pix_bn = tf.layers.batch_normalization(
-                    inputs=instance_seg_logits, training=self._is_training, name='pix_bn')
-                pix_relu = tf.nn.relu(pix_bn, name='pix_relu')
-                pix_embedding = tf.layers.conv2d(
-                    inputs=pix_relu,
-                    filters=CFG.TRAIN.EMBEDDING_FEATS_DIMS,
-                    padding='SAME',
-                    kernel_size=1,
-                    use_bias=False,
-                    name='pix_embedding_conv'
-                )
                 pix_image_shape = (pix_embedding.get_shape().as_list()[1], pix_embedding.get_shape().as_list()[2])
                 instance_segmentation_loss, l_var, l_dist, l_reg = \
                     lanenet_discriminative_loss.discriminative_loss(
