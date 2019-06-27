@@ -12,7 +12,7 @@ outputs = ['lanenet_model_1/enet_backend/instance_seg/pix_embedding_conv/Conv2D'
 
 
 def get_frozen_graph(frozen_path):
-  with tf.gfile.FastGFile('frozen_path', "rb") as f:
+  with tf.gfile.FastGFile(frozen_path, "rb") as f:
     graph_def = tf.GraphDef()
     graph_def.ParseFromString(f.read())
   return graph_def
@@ -20,9 +20,9 @@ def get_frozen_graph(frozen_path):
 
 def optimize_graph(frozen_path):
 	frozen_graph_def = get_frozen_graph(frozen_path)
-    # We precise the file fullname of our freezed graph
-    absolute_model_dir = "/".join(input_checkpoint.split('/')[:-1])
-    output_graph = "trt_model.pb"
+	# We precise the file fullname of our freezed graph
+	absolute_model_dir = "/".join(frozen_path.split('/')[:-1])
+	output_graph = "trt_model.pb"
 
 	trt_graph_def = trt.create_inference_graph(frozen_graph_def,
 					outputs,
@@ -43,4 +43,4 @@ if __name__ == '__main__':
     parser.add_argument("--model_path", type=str, default="", help="frozen model to export")
     args = parser.parse_args()
 
-optimize_graph(args.model_model_path)
+optimize_graph(args.model_path)

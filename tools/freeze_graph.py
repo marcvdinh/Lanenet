@@ -62,7 +62,7 @@ def freeze_graph(model_dir, output_node_names):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_dir", type=str, default="", help="Model folder to export")
-    parser.add_argument("--output_node_names", type=str, default="",
+    parser.add_argument("--output_node_names", type=str, default="lanenet_model_1/enet_backend/instance_seg/pix_embedding_conv/Conv2D,lanenet_model_1/enet_frontend/enet_decode_module/fullconv/Relu",
                         help="The name of the output nodes, comma separated.")
     args = parser.parse_args()
 
