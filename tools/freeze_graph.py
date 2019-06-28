@@ -1,11 +1,17 @@
 import os, argparse
-
+from config import global_config
+from lanenet_model import lanenet
 import tensorflow as tf
-
+from tensorflow.python.tools import freeze_graph
+from tensorflow.python.tools import optimize_for_inference_lib
 # The original freeze_graph function
 # from tensorflow.python.tools.freeze_graph import freeze_graph
 
+CFG = global_config.cfg
 dir = os.path.dirname(os.path.realpath(__file__))
+net_flag = "enet"
+model_dir = "/home/marcdinh/LaneNet/model/tusimple_lanenet_enet/enet4"
+
 
 
 def freeze_graph(model_dir, output_node_names):
@@ -28,41 +34,77 @@ def freeze_graph(model_dir, output_node_names):
     # We retrieve our checkpoint fullpath
     checkpoint = tf.train.get_checkpoint_state(model_dir)
     input_checkpoint = checkpoint.model_checkpoint_path
-
+    
     # We precise the file fullname of our freezed graph
     absolute_model_dir = "/".join(input_checkpoint.split('/')[:-1])
-    output_graph = absolute_model_dir + "/frozen_model.pb"
+
+    if not os.path.exists(absolute_model_dir + "/inference"):
+        os.mkdir(absolute_model_dir + "/inference")
+    if not os.path.exists(absolute_model_dir+"/frozen"):
+        os.mkdir(absolute_model_dir+"/frozen")
+
+
+    inference_checkpoint = absolute_model_dir + "/inference/inference_graph"
+    output_graph = absolute_model_dir + "/frozen/frozen_model.pb"
 
     # We clear devices to allow TensorFlow to control on which device it will load operations
     clear_devices = True
+    
+    input_tensor = tf.placeholder(dtype=tf.float32, shape=[1, 256, 512, 3], name='input_tensor')
+    net = lanenet.LaneNet(phase='test', net_flag=net_flag)
+    binary_seg_ret, instance_seg_ret = net.inference(input_tensor=input_tensor, name='lanenet_model')
 
-    # We start a session using a temporary fresh Graph
+    saver = tf.train.Saver()
+
+
+    # Set sess configuration
+    sess_config = tf.ConfigProto()
+    sess_config.gpu_options.per_process_gpu_memory_fraction = CFG.TEST.GPU_MEMORY_FRACTION
+    sess_config.gpu_options.allow_growth = CFG.TRAIN.TF_ALLOW_GROWTH
+    sess_config.gpu_options.allocator_type = 'BFC'
+
+    sess = tf.Session(config=sess_config)
+    
+    #we load the weights into the inference graph
+    with sess.as_default():
+        saver.restore(sess=sess, save_path=input_checkpoint)
+        
+        saver.save(sess,inference_checkpoint)
+        tf.train.write_graph(sess.graph.as_graph_def(), absolute_model_dir + "/inference", 'inference_graph.pb', as_text=True)
+    sess.close()
+
+    
     with tf.Session(graph=tf.Graph()) as sess:
         # We import the meta graph in the current default Graph
-        saver = tf.train.import_meta_graph(input_checkpoint + '.meta', clear_devices=clear_devices)
+        saver = tf.train.import_meta_graph(inference_checkpoint + '.meta', clear_devices=clear_devices)
 
         # We restore the weights
-        saver.restore(sess, input_checkpoint)
+        saver.restore(sess, inference_checkpoint)
 
         # We use a built-in TF helper to export variables to constants
         output_graph_def = tf.graph_util.convert_variables_to_constants(
             sess,  # The session is used to retrieve the weights
             tf.get_default_graph().as_graph_def(),  # The graph_def is used to retrieve the nodes
-            output_node_names.split(",")  # The output node names are used to select the usefull nodes
+            output_node_names.split(",")  # The output node names are used to select the useful nodes
         )
-
+        
+        outputGraph = optimize_for_inference_lib.optimize_for_inference(
+                output_graph_def,
+                ["input_tensor"], # an array of the input node(s)
+                ['lanenet_model/enet_backend/instance_seg/pix_embedding_conv/Conv2D','lanenet_model/enet_backend/binary_seg/ArgMax'], # an array of output nodes
+                tf.float32.as_datatype_enum)
+        
         # Finally we serialize and dump the output graph to the filesystem
         with tf.gfile.GFile(output_graph, "wb") as f:
-            f.write(output_graph_def.SerializeToString())
-        print("%d ops in the final graph." % len(output_graph_def.node))
-
-    return output_graph_def
-
+            f.write(outputGraph.SerializeToString())
+        print("%d ops in the final graph." % len(outputGraph.node))
+    sess.close()
+    return outputGraph
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_dir", type=str, default="", help="Model folder to export")
-    parser.add_argument("--output_node_names", type=str, default="lanenet_model_1/enet_backend/instance_seg/pix_embedding_conv/Conv2D,lanenet_model_1/enet_frontend/enet_decode_module/fullconv/Relu",
+    parser.add_argument("--model_dir", type=str, default="/home/marcdinh/LaneNet/model/tusimple_lanenet_enet/enet4", help="Model folder to export")
+    parser.add_argument("--output_node_names", type=str, default="lanenet_model/enet_backend/instance_seg/pix_embedding_conv/Conv2D,lanenet_model/enet_backend/binary_seg/ArgMax",
                         help="The name of the output nodes, comma separated.")
     args = parser.parse_args()
 

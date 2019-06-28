@@ -6,9 +6,9 @@ import tensorflow.contrib.tensorrt as trt
 from tensorflow.python.framework import graph_io
 
 
-_input = 'input_1'
+_input = 'input_tensor'
 _output = 'output_node0'
-outputs = ['lanenet_model_1/enet_backend/instance_seg/pix_embedding_conv/Conv2D','lanenet_model_1/enet_frontend/enet_decode_module/fullconv/Relu']
+outputs = ['lanenet_model/enet_backend/instance_seg/pix_embedding_conv/Conv2D','lanenet_model/enet_backend/binary_seg/ArgMax']
 
 
 def get_frozen_graph(frozen_path):
