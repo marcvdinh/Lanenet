@@ -15,7 +15,7 @@ model_dir = "/home/marcdinh/LaneNet/model/tusimple_lanenet_enet/enet4"
 
 
 
-def freeze_graph(model_dir, output_node_names):
+def freeze_graph(model_dir, output_node_names, optimize=False):
     """Extract the sub graph defined by the output nodes and convert
     all its variables into constant
     Args:
@@ -88,12 +88,12 @@ def freeze_graph(model_dir, output_node_names):
             tf.get_default_graph().as_graph_def(),  # The graph_def is used to retrieve the nodes
             output_node_names.split(",")  # The output node names are used to select the useful nodes
         )
-        
-        #outputGraph = optimize_for_inference_lib.optimize_for_inference(
-        #        output_graph_def,
-        #        ["input_tensor"], # an array of the input node(s)
-        #        ['lanenet_model/enet_backend/instance_seg/pix_embedding_conv/Conv2D','lanenet_model/enet_backend/binary_seg/ArgMax'], # an array of output nodes
-        #        tf.float32.as_datatype_enum)
+        if optimize == True:
+            output_graph_def = optimize_for_inference_lib.optimize_for_inference(
+                    output_graph_def,
+                    ["input_tensor"], # an array of the input node(s)
+                    ['lanenet_model/enet_backend/instance_seg/pix_embedding_conv/      Conv2D','lanenet_model/enet_backend/binary_seg/ArgMax'], # an array of output nodes
+                    tf.float32.as_datatype_enum)
         
         # Finally we serialize and dump the output graph to the filesystem
         with tf.gfile.GFile(output_graph, "wb") as f:
@@ -107,6 +107,9 @@ if __name__ == '__main__':
     parser.add_argument("--model_dir", type=str, default="/home/marcdinh/LaneNet/model/tusimple_lanenet_enet/enet4", help="Model folder to export")
     parser.add_argument("--output_node_names", type=str, default="lanenet_model/enet_backend/instance_seg/pix_embedding_conv/Conv2D,lanenet_model/enet_backend/binary_seg/ArgMax",
                         help="The name of the output nodes, comma separated.")
+
+    parser.add_argument("--optimize", type=str, default=False,
+                        help="use the TF optimizer to prune unused nodes and fold layers")
     args = parser.parse_args()
 
-freeze_graph(args.model_dir, args.output_node_names)
+freeze_graph(args.model_dir, args.output_node_names, args.optimize)
