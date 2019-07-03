@@ -211,8 +211,8 @@ class ENETFCN(cnn_basenet.CNNBaseModel):
 
                         instance_net = self.bottleneck(self,instance_net, output_depth=16, filter_size=3, name=bottleneck_name_name + '_1')
                         # =============FINAL CONVOLUTION=============
-                        instance_logits = tf.contrib.layers.conv2d_transpose(instance_net,  8, [2, 2],
-                                                                    stride=2, scope='fullconv')  #nb of filters tested [4,64]
+                        instance_logits = tf.contrib.layers.conv2d_transpose(instance_net,  4, [2, 2],
+                                                                    stride=2, scope='fullconv')  #nb of filters tested [4,8,16,64]
                 self._net_intermediate_results['instance_segment_logits'] = {
                     'data': instance_logits,
                     'shape': instance_logits.get_shape().as_list()

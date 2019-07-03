@@ -112,9 +112,9 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                 pix_bn = tf.layers.batch_normalization(
                     inputs=instance_seg_logits, training=self._is_training, name='pix_bn')
                 pix_relu = tf.nn.relu(pix_bn, name='pix_relu')
-                pix_embedding = tf.layers.conv2d(
-                    inputs=pix_relu,
-                    filters=CFG.TRAIN.EMBEDDING_FEATS_DIMS,
+                pix_embedding = self.conv2d(
+                    inputdata=pix_relu,
+                    out_channel=CFG.TRAIN.EMBEDDING_FEATS_DIMS,
                     padding='SAME',
                     kernel_size=1,
                     use_bias=False,
@@ -166,9 +166,9 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                 pix_bn = tf.layers.batch_normalization(
                     inputs=instance_seg_logits, training=self._is_training, name='pix_bn')
                 pix_relu = tf.nn.relu(pix_bn, name='pix_relu')
-                instance_seg_prediction = tf.layers.conv2d(
-                    inputs=pix_relu,
-                    filters=CFG.TRAIN.EMBEDDING_FEATS_DIMS,
+                instance_seg_prediction = self.conv2d(
+                    inputdata=pix_relu,
+                    out_channel=CFG.TRAIN.EMBEDDING_FEATS_DIMS,
                     kernel_size=1,
                     use_bias=False,
                     padding='SAME',

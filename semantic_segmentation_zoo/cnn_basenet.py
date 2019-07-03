@@ -402,7 +402,7 @@ class CNNBaseModel(object):
         return ret
 
     @staticmethod
-    def dilation_conv(input_tensor, k_size, out_dims, rate, padding='SAME',
+    def dilated_conv2d(input_tensor, k_size, out_dims, rate, padding='SAME',
                       w_init=None, b_init=None, use_bias=False, name=None):
         """
 
@@ -541,13 +541,13 @@ class CNNBaseModel(object):
     def initial_block(self, inputdata, training=True, name='initial_block'):
 
         # Convolutional branch
-        net_conv = tf.layers.conv2d(inputdata, 13, kernel_size=[3, 3], strides=2, padding='SAME', activation=None,
+        net_conv = self.conv2d(inputdata, 13, kernel_size=[3, 3], stride=2, padding='SAME',
                                     name=name + '_conv')
         net_conv = tf.contrib.layers.batch_norm(net_conv, is_training=training, fused=True, scope=name + '_batchnorm')
         net_conv = self.prelu(net_conv, name + '_prelu')
 
         # max pool
-        net_pool = tf.layers.max_pooling2d(inputdata, [2, 2], strides=2, name=name + '_maxpool')
+        net_pool = self.maxpooling(inputdata, 2, stride=2, name=name + '_maxpool')
 
         # concatenated ouput
         net_concat = tf.concat([net_conv, net_pool], axis=3, name=name + '_concat')
@@ -589,18 +589,18 @@ class CNNBaseModel(object):
 
                 # =============SUB BRANCH==============
                 # First projection that has a 2x2 kernel and strides 2
-                net = tf.layers.conv2d(inputs, reduced_depth, [2, 2], strides=2, padding='SAME', name=name + '_conv1')
+                net = self.conv2d(inputs, reduced_depth, [2, 2], stride=2, padding='SAME', name=name + '_conv1')
                 net = tf.contrib.layers.batch_norm(net, is_training=training, scope=name + '_batch_norm1')
                 net = self.prelu(net, name=name + '_prelu1')
 
                 # Second conv block
-                net = tf.layers.conv2d(net, reduced_depth, [filter_size, filter_size], padding='SAME',
+                net = self.conv2d(net, reduced_depth, [filter_size, filter_size], padding='SAME',
                                        name=name + '_conv2')
                 net = tf.contrib.layers.batch_norm(net, is_training=training, scope=name + '_batch_norm2')
                 net = self.prelu(net, name=name + '_prelu2')
 
                 # Final projection with 1x1 kernel
-                net = tf.layers.conv2d(net, output_depth, [1, 1], padding='SAME', name=name + '_conv3')
+                net = self.conv2d(net, output_depth, [1, 1], padding='SAME', name=name + '_conv3')
                 net = tf.contrib.layers.batch_norm(net, is_training=training, scope=name + '_batch_norm3')
                 net = self.prelu(net, name=name + '_prelu3')
 
@@ -626,19 +626,19 @@ class CNNBaseModel(object):
                 net_main = inputs
 
                 # First projection with 1x1 kernel (dimensionality reduction)
-                net = tf.layers.conv2d(inputs, reduced_depth, [1, 1], padding='SAME', name=name + '_conv1')
+                net = self.conv2d(inputs, reduced_depth, [1, 1], padding='SAME', name=name + '_conv1')
                 net = tf.contrib.layers.batch_norm(net, is_training=training, scope=name + '_batch_norm1')
                 net = self.prelu(net, name=name + '_prelu1')
 
                 # Second conv block --- apply dilated convolution here
-                net = tf.layers.conv2d(net, reduced_depth, [filter_size, filter_size], dilation_rate=dilation_rate,
+                net = self.dilated_conv2d(input_tensor=net, out_dims=reduced_depth, k_size=filter_size, rate=dilation_rate,
                                        padding='SAME',
                                        name=name + '_dilated_conv2')
                 net = tf.contrib.layers.batch_norm(net, is_training=training, scope=name + '_batch_norm2')
                 net = self.prelu(net, name=name + '_prelu2')
 
                 # Final projection with 1x1 kernel (Expansion)
-                net = tf.layers.conv2d(net, output_depth, [1, 1], padding='SAME', name=name + '_conv3')
+                net = self.conv2d(net, output_depth, [1, 1], padding='SAME', name=name + '_conv3')
                 net = tf.contrib.layers.batch_norm(net, is_training=training, scope=name + '_batch_norm3')
                 net = self.prelu(net, name=name + '_prelu3')
 
@@ -660,20 +660,20 @@ class CNNBaseModel(object):
                 net_main = inputs
 
                 # First projection with 1x1 kernel (dimensionality reduction)
-                net = tf.layers.conv2d(inputs, reduced_depth, [1, 1], padding='SAME', name=name + '_conv1')
+                net = self.conv2d(inputs, reduced_depth, [1, 1], padding='SAME', name=name + '_conv1')
                 net = tf.contrib.layers.batch_norm(net, is_training=training, scope=name + '_batch_norm1')
                 net = self.prelu(net, name=name + '_prelu1')
 
                 # Second conv block --- apply asymmetric conv here
-                net = tf.layers.conv2d(net, reduced_depth, [filter_size, 1], padding='SAME',
+                net = self.conv2d(net, reduced_depth, [filter_size, 1], padding='SAME',
                                        name=name + '_asymmetric_conv2a')
-                net = tf.layers.conv2d(net, reduced_depth, [1, filter_size], padding='SAME',
+                net = self.conv2d(net, reduced_depth, [1, filter_size], padding='SAME',
                                        name=name + '_asymmetric_conv2b')
                 net = tf.contrib.layers.batch_norm(net, is_training=training, scope=name + '_batch_norm2')
                 net = self.prelu(net, name=name + '_prelu2')
 
                 # Final projection with 1x1 kernel
-                net = tf.layers.conv2d(net, output_depth, [1, 1], padding='SAME', name=name + '_conv3')
+                net = self.conv2d(net, output_depth, [1, 1], padding='SAME', name=name + '_conv3')
                 net = tf.contrib.layers.batch_norm(net, is_training=training, scope=name + '_batch_norm3')
                 net = self.prelu(net, name=name + '_prelu3')
 
@@ -703,13 +703,13 @@ class CNNBaseModel(object):
                 # Main branch to upsample. output shape must match with the shape of the layer that was pooled initially, in order
                 # for the pooling indices to work correctly. However, the initial pooled layer was padded, so need to reduce dimension
                 # before unpooling. In the paper, padding is replaced with convolution for this purpose of reducing the depth!
-                net_unpool = tf.layers.conv2d(inputs, output_depth, [1, 1], padding='SAME', name=name + '_main_conv1')
+                net_unpool = self.conv2d(inputs, output_depth, [1, 1], padding='SAME', name=name + '_main_conv1')
                 net_unpool = tf.contrib.layers.batch_norm(net_unpool, is_training=training, scope=name + 'batch_norm1')
                 net_unpool = self.unpool(net_unpool, pooling_indices, output_shape=output_shape, name='unpool')
 
                 # ======SUB BRANCH=======
                 # First 1x1 projection to reduce depth
-                net = tf.layers.conv2d(inputs, reduced_depth, [1, 1], padding='SAME', name=name + '_conv1')
+                net = self.conv2d(inputs, reduced_depth, [1, 1], padding='SAME', name=name + '_conv1')
                 net = tf.contrib.layers.batch_norm(net, is_training=training, scope=name + '_batch_norm2')
                 net = self.prelu(net, name=name + '_prelu1')
 
@@ -728,7 +728,7 @@ class CNNBaseModel(object):
                 net = self.prelu(net, name=name + '_prelu2')
 
                 # Final projection with 1x1 kernel
-                net = tf.layers.conv2d(net, output_depth, [1, 1], padding='SAME', name=name + '_conv3')
+                net = self.conv2d(net, output_depth, [1, 1], padding='SAME', name=name + '_conv3')
                 net = tf.contrib.layers.batch_norm(net, is_training=training, scope=name + '_batch_norm4')
                 net = self.prelu(net, name=name + '_relu3')
 
@@ -749,17 +749,17 @@ class CNNBaseModel(object):
             net_main = inputs
 
             # First projection with 1x1 kernel
-            net = tf.layers.conv2d(inputs, reduced_depth, [1, 1], padding='SAME', name=name + '_conv1')
+            net = self.conv2d(inputs, reduced_depth, [1, 1], padding='SAME', name=name + '_conv1')
             net = tf.contrib.layers.batch_norm(net, is_training=training, scope=name + '_batch_norm1')
             net = self.prelu(net, name=name + '_prelu1')
 
             # Second conv block
-            net = tf.layers.conv2d(net, reduced_depth, [filter_size, filter_size], padding='SAME', name=name + '_conv2')
+            net = self.conv2d(net, reduced_depth, [filter_size, filter_size], padding='SAME', name=name + '_conv2')
             net = tf.contrib.layers.batch_norm(net, is_training=training, scope=name + '_batch_norm2')
             net = self.prelu(net, name=name + '_prelu2')
 
             # Final projection with 1x1 kernel
-            net = tf.layers.conv2d(net, output_depth, [1, 1], padding='SAME', name=name + '_conv3')
+            net = self.conv2d(net, output_depth, [1, 1], padding='SAME', name=name + '_conv3')
             net = tf.contrib.layers.batch_norm(net, is_training=training, scope=name + '_batch_norm3')
             net = self.prelu(net, name=name + '_prelu3')
 
