@@ -46,7 +46,7 @@ def freeze_graph(model_dir, output_node_names, optimize=False):
 
 
     inference_checkpoint = absolute_model_dir + "/inference/inference_graph"
-    output_graph = absolute_model_dir + "/frozen/frozen_model.pb"
+    output_graph = absolute_model_dir + "/frozen/saved_model.pb"
 
     # We clear devices to allow TensorFlow to control on which device it will load operations
     clear_devices = True
@@ -89,11 +89,7 @@ def freeze_graph(model_dir, output_node_names, optimize=False):
             output_node_names.split(",")  # The output node names are used to select the useful nodes
         )
         if optimize == True:
-            output_graph_def = optimize_for_inference_lib.optimize_for_inference(
-                    output_graph_def,
-                    ["input_tensor"], # an array of the input node(s)
-                    ['lanenet_model/enet_backend/instance_seg/pix_embedding_conv/      Conv2D','lanenet_model/enet_backend/binary_seg/ArgMax'], # an array of output nodes
-                    tf.float32.as_datatype_enum)
+            output_graph_def = tf.compat.v1.graph_util.remove_training_nodes(output_graph_def)
         
         # Finally we serialize and dump the output graph to the filesystem
         with tf.gfile.GFile(output_graph, "wb") as f:
@@ -108,7 +104,7 @@ if __name__ == '__main__':
     parser.add_argument("--output_node_names", type=str, default="lanenet_model/enet_backend/instance_seg/pix_embedding_conv/Conv2D,lanenet_model/enet_backend/binary_seg/ArgMax",
                         help="The name of the output nodes, comma separated.")
 
-    parser.add_argument("--optimize", type=str, default=False,
+    parser.add_argument("--optimize", type=bool, default=False,
                         help="use the TF optimizer to prune unused nodes and fold layers")
     args = parser.parse_args()
 
