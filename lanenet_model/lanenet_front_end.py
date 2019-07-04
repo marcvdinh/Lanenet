@@ -9,7 +9,7 @@
 LaneNet frontend branch which is mainly used for feature extraction
 """
 from semantic_segmentation_zoo import cnn_basenet
-from semantic_segmentation_zoo import enet_fcn, vgg16_based_fcn
+from semantic_segmentation_zoo import enet_fcn, vgg16_based_fcn,mobilenet_fcn
 
 
 class LaneNetFrondEnd(cnn_basenet.CNNBaseModel):
@@ -29,6 +29,10 @@ class LaneNetFrondEnd(cnn_basenet.CNNBaseModel):
         elif net_flag=='enet':
             self._frontend_net_map = {
                 'enet': enet_fcn.ENETFCN(phase=phase)
+            }
+        elif net_flag=='mobilenet':
+            self._frontend_net_map = {
+                'mobilenet': mobilenet_fcn.MOBILENETFCN(phase=phase)
             }
 
         self._net = self._frontend_net_map[net_flag]
