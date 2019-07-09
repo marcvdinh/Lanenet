@@ -53,7 +53,7 @@ class MOBILENETFCN(cnn_basenet.CNNBaseModel):
             net = self.block( net=net, input_filters=input_filters, output_filters=output_filters, expansion=expansion, stride=1, name = name + str(i))
         return net
 
-    def mobilenet_v2_arg_scope(self,weight_decay, is_training=True, depth_multiplier=1.0, regularize_depthwise=False,
+    def mobilenet_v2_arg_scope(self,weight_decay, depth_multiplier=1.0, regularize_depthwise=False,
                            dropout_keep_prob=1.0):
 
         regularizer = tf.contrib.layers.l2_regularizer(weight_decay)
@@ -64,14 +64,14 @@ class MOBILENETFCN(cnn_basenet.CNNBaseModel):
 
         with slim.arg_scope([slim.conv2d, slim.separable_conv2d],
                         activation_fn=tf.nn.relu, normalizer_fn=slim.batch_norm,
-                        normalizer_params={'is_training': is_training, 'center': True, 'scale': True }):
+                        normalizer_params={'is_training': self._is_training, 'center': True, 'scale': True }):
 
             with slim.arg_scope([slim.conv2d], weights_regularizer=regularizer):
 
                 with slim.arg_scope([slim.separable_conv2d],
                     weights_regularizer=depthwise_regularizer, depth_multiplier=depth_multiplier):
 
-                    with slim.arg_scope([slim.dropout], is_training=is_training, keep_prob=dropout_keep_prob) as sc:
+                    with slim.arg_scope([slim.dropout], is_training=self._is_training, keep_prob=dropout_keep_prob) as sc:
 
                         return sc
 
@@ -81,24 +81,33 @@ class MOBILENETFCN(cnn_basenet.CNNBaseModel):
                  spatial_squeeze=True,
                  name='encode'):
 
-        expansion = 4
+        expansion = 6
 
         with tf.variable_scope(name):
-
-            with slim.arg_scope(self.mobilenet_v2_arg_scope(0.0004, depth_multiplier=depth_multiplier,
-                                                   dropout_keep_prob=dropout_keep_prob)):
+            regularizer = tf.contrib.layers.l2_regularizer(0.0004)
+            with slim.arg_scope([slim.conv2d ],activation_fn=tf.nn.relu, weights_regularizer=regularizer),\
+             slim.arg_scope([slim.separable_conv2d],weights_regularizer=None, depth_multiplier=1.0),\
+             slim.arg_scope([slim.dropout], is_training=self._is_training, keep_prob=0.99),\
+             slim.arg_scope([slim.conv2d, slim.separable_conv2d],
+                        activation_fn=tf.nn.relu, normalizer_fn=slim.batch_norm,
+                        normalizer_params={'is_training': self._is_training, 'center': True, 'scale': True }):
 
                 net = self.conv2d(inputs, 32, 3, name='conv11', stride=2)
 
-                net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1, name = "bottleneck1")
+                net = self.blocks(net=net, expansion=1, output_filters=16, repeat=1, stride=1, name = "bottleneck1")
                 self._net_intermediate_results['residual_1'] = { 'data' : net, 'shape': net.get_shape().as_list()}
-                net = self.blocks(net=net, expansion=expansion, output_filters=128, repeat=2, stride=2,name = "bottleneck2")
+                net = self.blocks(net=net, expansion=expansion, output_filters=24, repeat=2, stride=2,name = "bottleneck2")
                 self._net_intermediate_results['residual_2'] = { 'data' : net,'shape': net.get_shape().as_list()}
-                net = self.blocks(net=net, expansion=expansion, output_filters=256, repeat=2, stride=2, name = "bottleneck3")
+                net = self.blocks(net=net, expansion=expansion, output_filters=32, repeat=3, stride=2, name = "bottleneck3")
                 self._net_intermediate_results['residual_3'] = { 'data' : net,'shape': net.get_shape().as_list()}
-                net = self.blocks(net=net, expansion=expansion, output_filters=512, repeat=6, stride=2, name = "bottleneck4")
+                net = self.blocks(net=net, expansion=expansion, output_filters=64, repeat=4, stride=2, name = "bottleneck4")
                 self._net_intermediate_results['residual_4'] = { 'data' : net,'shape': net.get_shape().as_list()}
-                net = self.blocks(net=net, expansion=expansion, output_filters=1024, repeat=2, stride=1, name = "bottleneck5")
+                net = self.blocks(net=net, expansion=expansion, output_filters=96, repeat=3, stride=1, name = "bottleneck5")
+                self._net_intermediate_results['residual_5'] = { 'data' : net,'shape': net.get_shape().as_list()}
+                net = self.blocks(net=net, expansion=expansion, output_filters=160, repeat=3, stride=2, name = "bottleneck6")
+                self._net_intermediate_results['residual_6'] = { 'data' : net,'shape': net.get_shape().as_list()}
+                net = self.blocks(net=net, expansion=expansion, output_filters=320, repeat=1, stride=1, name = "bottleneck7")
+       
 
                 self._net_intermediate_results['shared_encoding'] = {
                         'net': net,
@@ -111,34 +120,50 @@ class MOBILENETFCN(cnn_basenet.CNNBaseModel):
         res2 = self._net_intermediate_results['residual_2']['data']
         res3 = self._net_intermediate_results['residual_3']['data']
         res4 = self._net_intermediate_results['residual_4']['data']
+        res5 = self._net_intermediate_results['residual_5']['data']
+        res6 = self._net_intermediate_results['residual_6']['data']
 
         regularizer = tf.contrib.layers.l2_regularizer(0.0004)
         
         with slim.arg_scope([slim.conv2d ],activation_fn=tf.nn.relu, weights_regularizer=regularizer),\
              slim.arg_scope([slim.separable_conv2d],weights_regularizer=None, depth_multiplier=1.0),\
-             slim.arg_scope([slim.dropout], is_training=True, keep_prob=0.99):
+             slim.arg_scope([slim.dropout], is_training=self._is_training, keep_prob=0.99),\
+             slim.arg_scope([slim.conv2d, slim.separable_conv2d],
+                        activation_fn=tf.nn.relu, normalizer_fn=slim.batch_norm,
+                        normalizer_params={'is_training': self._is_training, 'center': True, 'scale': True }):
 
             with tf.variable_scope('binary_seg'):
                 net = self._net_intermediate_results['shared_encoding']['net']
-                res4 = slim.conv2d(inputs=net, num_outputs=1024, kernel_size=[1, 1], activation_fn=None)
-                net = tf.add(net,res4)
-                net = tf.image.resize_images(net, [2*shape[1],2*shape[2]])
+                
+                res6 = slim.conv2d(inputs=net, num_outputs=320, kernel_size=[1, 1], activation_fn=None)
+                net = tf.add(net,res6)
+                net = tf.image.resize_images(net, [2*self._net_intermediate_results['residual_6']['shape'][1],2*self._net_intermediate_results['residual_6']['shape'][2]])
                 net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1, name = "bottleneck1")
+
+                res5 = slim.conv2d(inputs=net, num_outputs=64, kernel_size=[1, 1], activation_fn=None)
+                net = tf.add(net,res5)
+                net = tf.image.resize_images(net, [2*self._net_intermediate_results['residual_5']['shape'][1],2*self._net_intermediate_results['residual_5']['shape'][2]])
+                net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1, name = "bottleneck2")
+
+                res4 = slim.conv2d(inputs=net, num_outputs=64, kernel_size=[1, 1], activation_fn=None)
+                net = tf.add(net,res4)
+                net = tf.image.resize_images(net, [2*self._net_intermediate_results['residual_4']['shape'][1],2*self._net_intermediate_results['residual_4']['shape'][2]])
+                net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1, name = "bottleneck3")
 
                 res3 = slim.conv2d(inputs=net, num_outputs=64, kernel_size=[1, 1], activation_fn=None)
                 net = tf.add(net,res3)
-                net = tf.image.resize_images(net, [4*shape[1],4*shape[2]])
-                net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1,name = "bottleneck2")
+                net = tf.image.resize_images(net, [2*self._net_intermediate_results['residual_3']['shape'][1],2*self._net_intermediate_results['residual_3']['shape'][2]])
+                net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1,name = "bottleneck4")
                 
                 res2 = slim.conv2d(inputs=net, num_outputs=64, kernel_size=[1, 1], activation_fn=None)
                 net = tf.add(net,res2)
-                net = tf.image.resize_images(net, [8*shape[1],8*shape[2]])
-                net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1,name = "bottleneck3")
+                net = tf.image.resize_images(net, [2*self._net_intermediate_results['residual_2']['shape'][1],2*self._net_intermediate_results['residual_2']['shape'][2]])
+                net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1,name = "bottleneck5")
                 
                 res1 = slim.conv2d(inputs=net, num_outputs=64, kernel_size=[1, 1], activation_fn=None)
                 net = tf.add(net,res1)
-                net = tf.image.resize_images(net, [16*shape[1],16*shape[2]])
-                net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1, name = "bottleneck4")
+                net = tf.image.resize_images(net, [2*self._net_intermediate_results['residual_1']['shape'][1],2*self._net_intermediate_results['residual_1']['shape'][2]])
+                net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1, name = "bottleneck6")
 
                 net =slim.conv2d(inputs=net, num_outputs=2, kernel_size=[1, 1], activation_fn=tf.nn.softmax, scope = "final")
                 self._net_intermediate_results['binary_segment_logits'] = {
@@ -146,26 +171,36 @@ class MOBILENETFCN(cnn_basenet.CNNBaseModel):
                         'shape': net.get_shape().as_list()}
             with tf.variable_scope('instance_seg'):
                 net = self._net_intermediate_results['shared_encoding']['net']
-                res4 = slim.conv2d(inputs=net, num_outputs=1024, kernel_size=[1, 1], activation_fn=None)
-                net = tf.add(net,res4)
-                net = tf.image.resize_images(net, [2*shape[1],2*shape[2]])
+                
+                res6 = slim.conv2d(inputs=net, num_outputs=320, kernel_size=[1, 1], activation_fn=None)
+                net = tf.add(net,res6)
+                net = tf.image.resize_images(net, [2*self._net_intermediate_results['residual_6']['shape'][1],2*self._net_intermediate_results['residual_6']['shape'][2]])
                 net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1, name = "bottleneck1")
+
+                res5 = slim.conv2d(inputs=net, num_outputs=64, kernel_size=[1, 1], activation_fn=None)
+                net = tf.add(net,res5)
+                net = tf.image.resize_images(net, [2*self._net_intermediate_results['residual_5']['shape'][1],2*self._net_intermediate_results['residual_5']['shape'][2]])
+                net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1, name = "bottleneck2")
+
+                res4 = slim.conv2d(inputs=net, num_outputs=64, kernel_size=[1, 1], activation_fn=None)
+                net = tf.add(net,res4)
+                net = tf.image.resize_images(net, [2*self._net_intermediate_results['residual_4']['shape'][1],2*self._net_intermediate_results['residual_4']['shape'][2]])
+                net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1, name = "bottleneck3")
 
                 res3 = slim.conv2d(inputs=net, num_outputs=64, kernel_size=[1, 1], activation_fn=None)
                 net = tf.add(net,res3)
-                net = tf.image.resize_images(net, [4*shape[1],4*shape[2]])
-                net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1,name = "bottleneck2")
+                net = tf.image.resize_images(net, [2*self._net_intermediate_results['residual_3']['shape'][1],2*self._net_intermediate_results['residual_3']['shape'][2]])
+                net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1,name = "bottleneck4")
                 
                 res2 = slim.conv2d(inputs=net, num_outputs=64, kernel_size=[1, 1], activation_fn=None)
                 net = tf.add(net,res2)
-                net = tf.image.resize_images(net, [8*shape[1],8*shape[2]])
-                net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1,name = "bottleneck3")
+                net = tf.image.resize_images(net, [2*self._net_intermediate_results['residual_2']['shape'][1],2*self._net_intermediate_results['residual_2']['shape'][2]])
+                net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1,name = "bottleneck5")
                 
                 res1 = slim.conv2d(inputs=net, num_outputs=64, kernel_size=[1, 1], activation_fn=None)
                 net = tf.add(net,res1)
-                net = tf.image.resize_images(net, [16*shape[1],16*shape[2]])
-                net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1, name = "bottleneck4")
-    
+                net = tf.image.resize_images(net, [2*self._net_intermediate_results['residual_1']['shape'][1],2*self._net_intermediate_results['residual_1']['shape'][2]])
+                net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1, name = "bottleneck6")
                 self._net_intermediate_results['instance_segment_logits'] = {
                         'data': net,
                         'shape': net.get_shape().as_list()}
