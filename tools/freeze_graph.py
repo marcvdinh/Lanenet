@@ -10,12 +10,12 @@ from tensorflow.python.tools import optimize_for_inference_lib
 
 CFG = global_config.cfg
 dir = os.path.dirname(os.path.realpath(__file__))
-net_flag = "enet"
-model_dir = "/home/marcdinh/LaneNet/model/tusimple_lanenet_enet/enet4"
+#net_flag = "enet"
+#model_dir = "/home/marcdinh/LaneNet/model/tusimple_lanenet_enet/enet4"
 
 
 
-def freeze_graph(model_dir, output_node_names, optimize=False):
+def freeze_graph(model_dir, output_node_names, optimize=False, net_flag='mobilenet'):
     """Extract the sub graph defined by the output nodes and convert
     all its variables into constant
     Args:
@@ -100,12 +100,14 @@ def freeze_graph(model_dir, output_node_names, optimize=False):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_dir", type=str, default="/home/marcdinh/LaneNet/model/tusimple_lanenet_enet/enet4", help="Model folder to export")
-    parser.add_argument("--output_node_names", type=str, default="lanenet_model/enet_backend/instance_seg/pix_embedding_conv/Conv2D,lanenet_model/enet_backend/binary_seg/ArgMax",
+    parser.add_argument("--model_dir", type=str, default='', help="Model folder to export")
+    parser.add_argument("--output_node_names", type=str, default="lanenet_model/mobilenet_backend/instance_seg/pix_embedding_conv/Conv2D,lanenet_model/mobilenet_backend/binary_seg/ArgMax",
                         help="The name of the output nodes, comma separated.")
 
     parser.add_argument("--optimize", type=bool, default=False,
                         help="use the TF optimizer to prune unused nodes and fold layers")
+    parser.add_argument("--net", type=str, default='',
+                        help="backbone net")
     args = parser.parse_args()
 
-freeze_graph(args.model_dir, args.output_node_names, args.optimize)
+freeze_graph(args.model_dir, args.output_node_names, args.optimize, args.net)

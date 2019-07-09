@@ -37,6 +37,7 @@ def init_args():
     parser.add_argument('--image_dir', type=str, help='The source tusimple lane test data dir')
     parser.add_argument('--weights_path', type=str, help='The model weights path')
     parser.add_argument('--save_dir', type=str, help='The test output save root dir')
+     parser.add_argument('--net', type=str, help='The backbone architecture')
 
     return parser.parse_args()
 
@@ -55,7 +56,7 @@ def load_graph(frozen_graph_filename):
     return graph
 
 
-def test_lanenet_batch(src_dir, weights_path, save_dir):
+def test_lanenet_batch(src_dir, weights_path, save_dir, net_flag):
     """
 
     :param src_dir:
@@ -75,15 +76,15 @@ def test_lanenet_batch(src_dir, weights_path, save_dir):
 
     input_tensor = graph.get_tensor_by_name('prefix/input_tensor:0')
     
-    binary_seg_ret = graph.get_tensor_by_name('prefix/lanenet_model/enet_backend/binary_seg/ArgMax:0')
-    instance_seg_ret = graph.get_tensor_by_name('prefix/lanenet_model/enet_backend/instance_seg/pix_embedding_conv/Conv2D:0')
+    binary_seg_ret = graph.get_tensor_by_name('prefix/lanenet_model/'+net+'_backend/binary_seg/ArgMax:0')
+    instance_seg_ret = graph.get_tensor_by_name('prefix/lanenet_model/'+ net +'_backend/instance_seg/pix_embedding_conv/Conv2D:0')
 
     postprocessor = lanenet_postprocess.LaneNetPostProcessor()
 
 
     # Set sess configuration
     sess_config = tf.ConfigProto()
-    sess_config.gpu_options.per_process_gpu_memory_fraction = CFG.TEST.GPU_MEMORY_FRACTION
+    sess_config.gpu_options.per_process_gpu_memory_fraction = 0.5 #CFG.TEST.GPU_MEMORY_FRACTION
     sess_config.gpu_options.allow_growth = CFG.TRAIN.TF_ALLOW_GROWTH
     sess_config.gpu_options.allocator_type = 'BFC'
 
@@ -140,5 +141,6 @@ if __name__ == '__main__':
     test_lanenet_batch(
         src_dir=args.image_dir,
         weights_path=args.weights_path,
-        save_dir=args.save_dir
+        save_dir=args.save_dir,
+        net_flag = args.net
     )

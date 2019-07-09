@@ -17,6 +17,7 @@ import glog as log
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+import tensorflow.contrib.tensorrt as trt
 
 from config import global_config
 from lanenet_model import lanenet
@@ -33,7 +34,7 @@ def init_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--video_path', type=str, default='data/test.mp4',help='The image path or the src image save dir')
     parser.add_argument('--frozen_model', type=str, default= 'model/tusimple_lanenet_enet/enet4/frozen/trt_model.pb',  help='The model weights path')
-    parser.add_argument('--net_flag', type=str, default='enet',
+    parser.add_argument('--net', type=str, default='enet',
                         help='The net flag which determins the net\'s architecture')
 
     return parser.parse_args()
@@ -106,8 +107,9 @@ def test_lanenet(video_path, frozen_model, net_flag='enet'):
 
     input_tensor = graph.get_tensor_by_name('prefix/input_tensor:0')
     
-    binary_seg_ret = graph.get_tensor_by_name('prefix/lanenet_model/enet_backend/binary_seg/ArgMax:0')
-    instance_seg_ret = graph.get_tensor_by_name('prefix/lanenet_model/enet_backend/instance_seg/pix_embedding_conv/Conv2D:0')
+    binary_seg_ret = graph.get_tensor_by_name('prefix/lanenet_model/'+net_flag+'_backend/binary_seg/ArgMax:0')
+    instance_seg_ret = graph.get_tensor_by_name('prefix/lanenet_model/'+ net_flag +'_backend/instance_seg/pix_embedding_conv/Conv2D:0')
+
     # Set sess configuration
     sess_config = tf.ConfigProto()
     sess_config.gpu_options.per_process_gpu_memory_fraction = CFG.TEST.GPU_MEMORY_FRACTION
@@ -161,4 +163,4 @@ if __name__ == '__main__':
     # init args
     args = init_args()
 
-    test_lanenet(args.video_path, args.frozen_model)
+    test_lanenet(args.video_path, args.frozen_model, args.net)

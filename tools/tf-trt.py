@@ -8,7 +8,7 @@ from tensorflow.python.framework import graph_io
 
 _input = 'input_tensor'
 _output = 'output_node0'
-outputs = ['lanenet_model/enet_backend/instance_seg/pix_embedding_conv/Conv2D','lanenet_model/enet_backend/binary_seg/ArgMax']
+#outputs = ['lanenet_model/'+ net +'_backend/instance_seg/pix_embedding_conv/Conv2D','lanenet_model/'+net+'_backend/binary_seg/ArgMax']
 
 
 def get_frozen_graph(frozen_path):
@@ -18,15 +18,18 @@ def get_frozen_graph(frozen_path):
   return graph_def
 
 
-def optimize_graph(frozen_path):
+def optimize_graph(frozen_path, net_flag):
 	frozen_graph_def = get_frozen_graph(frozen_path)
 	# We precise the file fullname of our freezed graph
 	absolute_model_dir = "/".join(frozen_path.split('/')[:-1])
 	output_graph = "trt_model.pb"
 
+	outputs = ['lanenet_model/'+ net +'_backend/instance_seg/pix_embedding_conv/Conv2D','lanenet_model/'+net+'_backend/binary_seg/ArgMax']
+
 	trt_graph_def = trt.create_inference_graph(frozen_graph_def,
 					outputs,
-					max_batch_size=4,
+					max_batch_size=2,
+					minimum_segment_size=5,
 					max_workspace_size_bytes=1 << 30,
 					precision_mode='FP16')
 	tf.reset_default_graph()
@@ -41,6 +44,7 @@ def optimize_graph(frozen_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_path", type=str, default="", help="frozen model to export")
+	 parser.add_argument("--net", type=str, default="", help="backbone architecture")
     args = parser.parse_args()
 
-optimize_graph(args.model_path)
+optimize_graph(args.model_path, args.net)
