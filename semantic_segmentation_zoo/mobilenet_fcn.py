@@ -146,7 +146,8 @@ class MOBILENETFCN(cnn_basenet.CNNBaseModel):
                 net = tf.image.resize_images(net, [CFG.TRAIN.IMG_HEIGHT,CFG.TRAIN.IMG_WIDTH])
                 net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1, name = "bottleneck7")
                 
-                net =slim.conv2d(inputs=net, num_outputs=2, kernel_size=[1, 1], activation_fn=tf.nn.softmax, scope = "final")
+                net = tf.image.resize_images(net, [CFG.TRAIN.IMG_HEIGHT,CFG.TRAIN.IMG_WIDTH])
+                net = self.blocks(net=net, expansion=1, output_filters=2, repeat=1, stride=1, name = "final")
                 self._net_intermediate_results['binary_segment_logits'] = {
                         'data': net,
                         'shape': net.get_shape().as_list()}
@@ -184,7 +185,7 @@ class MOBILENETFCN(cnn_basenet.CNNBaseModel):
                 net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1, name = "bottleneck6")
 
                 net = tf.image.resize_images(net, [CFG.TRAIN.IMG_HEIGHT,CFG.TRAIN.IMG_WIDTH])
-                net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1, name = "bottleneck7")
+                net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1, name = "final")
 
                 self._net_intermediate_results['instance_segment_logits'] = {
                         'data': net,

@@ -123,7 +123,8 @@ class MOBILENETV1FCN(cnn_basenet.CNNBaseModel):
                 net = self.block(net=net,kernel=[3,3], depth=64,  stride=1, name = "depthsepconv4")
                 
                 net = tf.image.resize_images(net, [CFG.TRAIN.IMG_HEIGHT,CFG.TRAIN.IMG_WIDTH])
-                net =slim.conv2d(inputs=net, num_outputs=2, kernel_size=[1, 1], activation_fn=tf.nn.softmax, scope = "final")
+                net =self.block(net=net, kernel=[3,3],depth=2, stride = 1, name = "final")
+                
                 self._net_intermediate_results['binary_segment_logits'] = {
                         'data': net,
                         'shape': net.get_shape().as_list()}
@@ -151,7 +152,8 @@ class MOBILENETV1FCN(cnn_basenet.CNNBaseModel):
                 net = self.block(net=net,kernel=[3,3], depth=64,  stride=1, name = "depthsepconv4")
 
                 net = tf.image.resize_images(net, [CFG.TRAIN.IMG_HEIGHT,CFG.TRAIN.IMG_WIDTH])
-                net = self.block(net=net, kernel=[3,3],depth=64, stride = 1, name = "bottleneck7")
+                net = self.block(net=net, kernel=[3,3],depth=64, stride = 1, name = "final")
+                
                 self._net_intermediate_results['instance_segment_logits'] = {
                         'data': net,
                         'shape': net.get_shape().as_list()}
@@ -169,7 +171,7 @@ if __name__ == '__main__':
     test code
     """
     test_in_tensor = tf.placeholder(dtype=tf.float32, shape=[1, 256, 512, 3], name='input')
-    model = MOBILENETFCN(phase='train')
-    ret = model.build_model(input_tensor=test_in_tensor, name='mobilenetfcn')
+    model = MOBILENETV1FCN(phase='train')
+    ret = model.build_model(input_tensor=test_in_tensor, name='mobilenetv1fcn')
     for layer_name, layer_info in ret.items():
         print('layer name: {:s} shape: {}'.format(layer_name, layer_info['shape']))
