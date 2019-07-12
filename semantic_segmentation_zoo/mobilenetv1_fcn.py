@@ -12,7 +12,7 @@ class MOBILENETV1FCN(cnn_basenet.CNNBaseModel):
         """
 
         """
-        super(MOBILENETFCN, self).__init__()
+        super(MOBILENETV1FCN, self).__init__()
         self._phase = phase
         self._is_training = self._is_net_for_training()
         self._net_intermediate_results = collections.OrderedDict()
