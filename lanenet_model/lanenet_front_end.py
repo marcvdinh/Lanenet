@@ -36,7 +36,7 @@ class LaneNetFrondEnd(cnn_basenet.CNNBaseModel):
             }
         elif net_flag=='mobilenetv1':
             self._frontend_net_map = {
-                'mobilenet': mobilenetv1_fcn.MOBILENETV1FCN(phase=phase)
+                'mobilenetv1': mobilenetv1_fcn.MOBILENETV1FCN(phase=phase)
             }
         self._net = self._frontend_net_map[net_flag]
 
