@@ -34,7 +34,10 @@ class LaneNetFrondEnd(cnn_basenet.CNNBaseModel):
             self._frontend_net_map = {
                 'mobilenet': mobilenet_fcn.MOBILENETFCN(phase=phase)
             }
-
+         elif net_flag=='mobilenetv1':
+            self._frontend_net_map = {
+                'mobilenet': mobilenet_fcn.MOBILENETV1FCN(phase=phase)
+            }
         self._net = self._frontend_net_map[net_flag]
 
     def build_model(self, input_tensor, name, reuse):
