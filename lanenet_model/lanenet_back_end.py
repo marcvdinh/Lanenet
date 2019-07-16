@@ -159,20 +159,20 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
 
             with tf.variable_scope(name_or_scope='binary_seg'):
                 binary_seg_score = tf.nn.softmax(logits=binary_seg_logits)
-                binary_seg_prediction = tf.argmax(binary_seg_score, axis=-1)
+                binary_seg_prediction = tf.argmax(binary_seg_score, axis=1)
 
             with tf.variable_scope(name_or_scope='instance_seg'):
 
                 pix_bn = tf.layers.batch_normalization(
                     inputs=instance_seg_logits, training=self._is_training, name='pix_bn')
-                pix_relu = tf.nn.relu(pix_bn, name='pix_relu')
-                instance_seg_prediction = self.conv2d(
-                    inputdata=pix_relu,
-                    out_channel=CFG.TRAIN.EMBEDDING_FEATS_DIMS,
-                    kernel_size=1,
-                    use_bias=False,
-                    padding='SAME',
-                    name='pix_embedding_conv'
-                )
+                pix_relu = tf.nn.relu6(pix_bn, name='pix_relu',axis=-1)
+                instance_seg_prediction = tf.layers.conv2d(inputs=pix_relu, 
+                                                           filters=CFG.TRAIN.EMBEDDING_FEATS_DIMS, 
+                                                            kernel_size=[1, 1], 
+                                                            data_format = "channels_last",
+                                                            activation=None, 
+                                                            kernel_regularizer=tf.contrib.layers.l2_regularizer(0.0004),
+                                                            padding="SAME",
+                                                            name = 'pix_embedding_conv')
 
         return binary_seg_prediction, instance_seg_prediction
