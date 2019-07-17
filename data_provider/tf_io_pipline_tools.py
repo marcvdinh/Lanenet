@@ -62,12 +62,10 @@ def write_example_tfrecords(gt_images_paths, gt_binary_images_paths, gt_instance
 
             # prepare gt image
             _gt_image = cv2.imread(_gt_image_path, cv2.IMREAD_UNCHANGED)
-            if _gt_image.shape != (RESIZE_IMAGE_WIDTH, RESIZE_IMAGE_HEIGHT, 3):
+            if _gt_image.shape != (RESIZE_IMAGE_HEIGHT, RESIZE_IMAGE_WIDTH, 3):
                 _gt_image = cv2.resize(_gt_image,
                                        dsize=(RESIZE_IMAGE_WIDTH, RESIZE_IMAGE_HEIGHT),
                                        interpolation=cv2.INTER_LINEAR)
-                #print(_gt_image.shape)
-                _gt_image = np.transpose(_gt_image, (2,0,1))
             _gt_image_raw = _gt_image.tostring()
 
             # prepare gt binary image
@@ -77,8 +75,6 @@ def write_example_tfrecords(gt_images_paths, gt_binary_images_paths, gt_instance
                                               dsize=(RESIZE_IMAGE_WIDTH, RESIZE_IMAGE_HEIGHT),
                                               interpolation=cv2.INTER_NEAREST)
                 _gt_binary_image = np.array(_gt_binary_image / 255.0, dtype=np.uint8)
-                #print(_gt_binary_image.shape)
-                #_gt_binary_image = np.transpose(_gt_binary_image, (2,0,1))
             _gt_binary_image_raw = _gt_binary_image.tostring()
 
             # prepare gt instance image
@@ -87,7 +83,6 @@ def write_example_tfrecords(gt_images_paths, gt_binary_images_paths, gt_instance
                 _gt_instance_image = cv2.resize(_gt_instance_image,
                                                 dsize=(RESIZE_IMAGE_WIDTH, RESIZE_IMAGE_HEIGHT),
                                                 interpolation=cv2.INTER_NEAREST)
-            #_gt_instance_image = np.transpose(_gt_instance_image, (2,0,1))
             _gt_instance_image_raw = _gt_instance_image.tostring()
 
             _example = tf.train.Example(
@@ -120,21 +115,17 @@ def decode(serialized_example):
         })
 
     # decode gt image
-    gt_image_shape = tf.stack([3,RESIZE_IMAGE_HEIGHT, RESIZE_IMAGE_WIDTH])
+    gt_image_shape = tf.stack([RESIZE_IMAGE_HEIGHT, RESIZE_IMAGE_WIDTH, 3])
     gt_image = tf.decode_raw(features['gt_image_raw'], tf.uint8)
     gt_image = tf.reshape(gt_image, gt_image_shape)
-    print("decoded gt image shape: ")
-    print(gt_image.shape)
 
     # decode gt binary image
-    gt_binary_image_shape = tf.stack([1,RESIZE_IMAGE_HEIGHT, RESIZE_IMAGE_WIDTH])
+    gt_binary_image_shape = tf.stack([RESIZE_IMAGE_HEIGHT, RESIZE_IMAGE_WIDTH, 1])
     gt_binary_image = tf.decode_raw(features['gt_binary_image_raw'], tf.uint8)
     gt_binary_image = tf.reshape(gt_binary_image, gt_binary_image_shape)
-    print("decoded gt binary img shape:")
-    print(gt_binary_image.shape)
 
     # decode gt instance image
-    gt_instance_image_shape = tf.stack([1,RESIZE_IMAGE_HEIGHT, RESIZE_IMAGE_WIDTH])
+    gt_instance_image_shape = tf.stack([RESIZE_IMAGE_HEIGHT, RESIZE_IMAGE_WIDTH, 1])
     gt_instance_image = tf.decode_raw(features['gt_instance_image_raw'], tf.uint8)
     gt_instance_image = tf.reshape(gt_instance_image, gt_instance_image_shape)
 
@@ -194,7 +185,7 @@ def normalize(gt_image, gt_binary_image, gt_instance_image):
         log.error(gt_image.get_shape())
         log.error(gt_binary_image.get_shape())
         log.error(gt_instance_image.get_shape())
-        raise ValueError('Input must be of size [C>0,height, width]')
+        raise ValueError('Input must be of size [height, width, C>0]')
 
     gt_image = tf.subtract(tf.divide(gt_image, tf.constant(127.5, dtype=tf.float32)),
                            tf.constant(1.0, dtype=tf.float32))
@@ -211,30 +202,33 @@ def random_crop_batch_images(gt_image, gt_binary_image, gt_instance_image, cropp
     :param cropped_size:
     :return:
     """
-    concat_images = tf.concat([gt_image, gt_binary_image, gt_instance_image], axis=0)
-    print(gt_image.shape)
+    concat_images = tf.concat([gt_image, gt_binary_image, gt_instance_image], axis=-1)
+
     concat_cropped_images = tf.image.random_crop(
         concat_images,
-        [tf.shape(concat_images)[0],cropped_size[1], cropped_size[0]],
+        [cropped_size[1], cropped_size[0], tf.shape(concat_images)[-1]],
         seed=tf.random.set_random_seed(1234)
     )
 
     cropped_gt_image = tf.slice(
         concat_cropped_images,
         begin=[0, 0, 0],
-        size=[3,cropped_size[1], cropped_size[0]]
+        size=[cropped_size[1], cropped_size[0], 3]
     )
     cropped_gt_binary_image = tf.slice(
         concat_cropped_images,
-        begin=[3, 0, 0],
-        size=[1,cropped_size[1], cropped_size[0]]
+        begin=[0, 0, 3],
+        size=[cropped_size[1], cropped_size[0], 1]
     )
     cropped_gt_instance_image = tf.slice(
         concat_cropped_images,
-        begin=[4, 0, 0],
-        size=[1,cropped_size[1], cropped_size[0]]
+        begin=[0, 0, 4],
+        size=[cropped_size[1], cropped_size[0], 1]
     )
 
+    cropped_gt_image = tf.transpose(cropped_gt_image, [2,0,1])
+    cropped_gt_binary_image = tf.transpose(cropped_gt_binary_image, [2,0,1])
+    cropped_gt_instance_image = tf.transpose(cropped_gt_instance_image, [2,0,1])
     return cropped_gt_image, cropped_gt_binary_image, cropped_gt_instance_image
 
 
@@ -246,9 +240,9 @@ def random_horizon_flip_batch_images(gt_image, gt_binary_image, gt_instance_imag
     :param gt_instance_image:
     :return:
     """
-    concat_images = tf.concat([gt_image, gt_binary_image, gt_instance_image], axis=0)
+    concat_images = tf.concat([gt_image, gt_binary_image, gt_instance_image], axis=-1)
 
-    [_, image_height, image_width] = gt_image.get_shape().as_list()
+    [image_height, image_width, _] = gt_image.get_shape().as_list()
 
     concat_flipped_images = tf.image.random_flip_left_right(
         image=concat_images,
@@ -258,17 +252,17 @@ def random_horizon_flip_batch_images(gt_image, gt_binary_image, gt_instance_imag
     flipped_gt_image = tf.slice(
         concat_flipped_images,
         begin=[0, 0, 0],
-        size=[3,image_height, image_width]
+        size=[image_height, image_width, 3]
     )
     flipped_gt_binary_image = tf.slice(
         concat_flipped_images,
-        begin=[3, 0, 0],
-        size=[1,image_height, image_width]
+        begin=[0, 0, 3],
+        size=[image_height, image_width, 1]
     )
     flipped_gt_instance_image = tf.slice(
         concat_flipped_images,
-        begin=[4, 0, 0],
-        size=[1,image_height, image_width]
+        begin=[0, 0, 4],
+        size=[image_height, image_width, 1]
     )
-
+    
     return flipped_gt_image, flipped_gt_binary_image, flipped_gt_instance_image

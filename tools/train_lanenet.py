@@ -121,16 +121,19 @@ def record_training_intermediate_result(gt_images, gt_binary_labels, gt_instance
     for index, gt_image in enumerate(gt_images):
         gt_image_name = '{:s}_{:d}_gt_image.png'.format(flag, index + 1)
         gt_image_path = ops.join(save_dir, gt_image_name)
-        gt_image = (gt_images[index] + 1.0) * 127.5
+        #print("gt image shape converted")
+        #print(gt_images[index].shape)
+        gt_image = np.transpose(gt_images[index], (1,2,0))
+        gt_image = (gt_image + 1.0) * 127.5       
         cv2.imwrite(gt_image_path, np.array(gt_image, dtype=np.uint8))
 
         gt_binary_label_name = '{:s}_{:d}_gt_binary_label.png'.format(flag, index + 1)
         gt_binary_label_path = ops.join(save_dir, gt_binary_label_name)
-        cv2.imwrite(gt_binary_label_path, np.array(gt_binary_labels[index][:, :, 0] * 255, dtype=np.uint8))
+        cv2.imwrite(gt_binary_label_path, np.array(gt_binary_labels[index][0, :,: ] * 255, dtype=np.uint8))
 
         gt_instance_label_name = '{:s}_{:d}_gt_instance_label.png'.format(flag, index + 1)
         gt_instance_label_path = ops.join(save_dir, gt_instance_label_name)
-        cv2.imwrite(gt_instance_label_path, np.array(gt_instance_labels[index][:, :, 0], dtype=np.uint8))
+        cv2.imwrite(gt_instance_label_path, np.array(gt_instance_labels[index][0, :, :], dtype=np.uint8))
 
         gt_binary_seg_name = '{:s}_{:d}_gt_binary_seg.png'.format(flag, index + 1)
         gt_binary_seg_path = ops.join(save_dir, gt_binary_seg_name)
@@ -246,7 +249,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg'):
 
         train_prediction_logits = train_compute_ret['binary_seg_logits']
         train_prediction_score = tf.nn.softmax(logits=train_prediction_logits)
-        train_prediction = tf.argmax(train_prediction_score, axis=1)
+        train_prediction = tf.argmax(train_prediction_score, axis=3)
 
         train_accuracy = evaluate_model_utils.calculate_model_precision(
             train_compute_ret['binary_seg_logits'], train_binary_labels
@@ -310,7 +313,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg'):
 
         val_prediction_logits = val_compute_ret['binary_seg_logits']
         val_prediction_score = tf.nn.softmax(logits=val_prediction_logits)
-        val_prediction = tf.argmax(val_prediction_score, axis=1)
+        val_prediction = tf.argmax(val_prediction_score, axis=3)
 
         val_accuracy = evaluate_model_utils.calculate_model_precision(
             val_compute_ret['binary_seg_logits'], val_binary_labels
