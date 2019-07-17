@@ -246,7 +246,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg'):
 
         train_prediction_logits = train_compute_ret['binary_seg_logits']
         train_prediction_score = tf.nn.softmax(logits=train_prediction_logits)
-        train_prediction = tf.argmax(train_prediction_score, axis=-1)
+        train_prediction = tf.argmax(train_prediction_score, axis=1)
 
         train_accuracy = evaluate_model_utils.calculate_model_precision(
             train_compute_ret['binary_seg_logits'], train_binary_labels
@@ -310,7 +310,7 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg'):
 
         val_prediction_logits = val_compute_ret['binary_seg_logits']
         val_prediction_score = tf.nn.softmax(logits=val_prediction_logits)
-        val_prediction = tf.argmax(val_prediction_score, axis=-1)
+        val_prediction = tf.argmax(val_prediction_score, axis=1)
 
         val_accuracy = evaluate_model_utils.calculate_model_precision(
             val_compute_ret['binary_seg_logits'], val_binary_labels
