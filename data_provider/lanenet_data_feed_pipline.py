@@ -317,7 +317,7 @@ class LaneNetDataFeeder(object):
         :param batch_size:
         :param num_epochs:
         :return: A tuple (images, labels), where:
-                    * images is a float tensor with shape [batch_size, H, W, C]
+                    * images is a float tensor with shape [batch_size, C, H, W]
                       in the range [-0.5, 0.5].
                     * labels is an int32 tensor with shape [batch_size] with the true label,
                       a number in the range [0, CLASS_NUMS).

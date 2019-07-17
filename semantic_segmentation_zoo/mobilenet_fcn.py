@@ -95,8 +95,8 @@ class MOBILENETFCN(cnn_basenet.CNNBaseModel):
             with slim.arg_scope([slim.dropout], is_training=self._is_training, keep_prob=0.99):
 
                 #net = self.conv2d(inputs, 32, 3, name='conv11', stride=2)
-                net =  tf.transpose(inputs, [0, 3, 1, 2])
-                net = tf.layers.conv2d(inputs=net, filters=32, kernel_size=[3, 3], data_format ="channels_first", padding="SAME",kernel_regularizer=tf.contrib.layers.l2_regularizer(0.0004),activation=None, name = name + "_3conv11")
+                #net =  tf.transpose(inputs, [0, 3, 1, 2])
+                net = tf.layers.conv2d(inputs=inputs, filters=32, kernel_size=[3, 3], data_format ="channels_first", padding="SAME",kernel_regularizer=tf.contrib.layers.l2_regularizer(0.0004),activation=None, name = name + "_3conv11")
 
                 net = self.blocks(net=net, expansion=1, output_filters=16, repeat=1, stride=1, name = "bottleneck1")
                 self._net_intermediate_results['residual_1'] = { 'data' : net, 'shape': net.get_shape().as_list()}
@@ -189,7 +189,7 @@ class MOBILENETFCN(cnn_basenet.CNNBaseModel):
                 #net = tf.layers.conv2d_transpose(inputs = net, filters = 64, kernel_size = [2,2], padding = "SAME", data_format="channels_first",strides =2)
                 net = self.blocks(net=net, expansion=1, output_filters=2, repeat=1, stride=1, name = "final")
 
-                net = tf.transpose(net, [0, 2, 3, 1])
+                #net = tf.transpose(net, [0, 2, 3, 1])
                 self._net_intermediate_results['binary_segment_logits'] = {
                         'data': net,
                         'shape': net.get_shape().as_list()}
@@ -249,7 +249,7 @@ class MOBILENETFCN(cnn_basenet.CNNBaseModel):
                 
                 #net = tf.layers.conv2d_transpose(inputs = net, filters = 64, kernel_size = [2,2], padding = "SAME", data_format="channels_first",strides =2)
                 #net = self.blocks(net=net, expansion=1, output_filters=64, repeat=1, stride=1, name = "final")
-                net = tf.transpose(net, [0, 2, 3, 1])
+                #net = tf.transpose(net, [0, 2, 3, 1])
                 self._net_intermediate_results['instance_segment_logits'] = {
                         'data': net,
                         'shape': net.get_shape().as_list()}

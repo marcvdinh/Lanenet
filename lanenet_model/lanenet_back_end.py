@@ -51,7 +51,15 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
         :param classes_weights:
         :return:
         """
-        loss_weights = tf.reduce_sum(tf.multiply(onehot_labels, classes_weights), axis=3)
+        onehot_labels = tf.transpose(onehot_labels, [0,2,3,1])
+        logits = tf.transpose(logits, [0,2,3,1])
+        loss_weights = tf.reduce_sum(tf.multiply(onehot_labels, classes_weights), axis=3) 
+        #loss_weights = tf.expand_dims(loss_weights,axis=1)
+        print("cross entropy loss shapes:")
+        print(onehot_labels.shape)
+        print(logits.shape)
+        print(loss_weights.shape)
+        #print(classes_weights.shape)
 
         loss = tf.losses.softmax_cross_entropy(
             onehot_labels=onehot_labels,
@@ -81,10 +89,10 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                     tf.reshape(
                         tf.cast(binary_label, tf.int32),
                         shape=[binary_label.get_shape().as_list()[0],
-                               binary_label.get_shape().as_list()[1],
-                               binary_label.get_shape().as_list()[2]]),
+                               binary_label.get_shape().as_list()[2],
+                               binary_label.get_shape().as_list()[3]]),
                     depth=CFG.TRAIN.CLASSES_NUMS,
-                    axis=-1
+                    axis=1
                 )
 
                 binary_label_plain = tf.reshape(
@@ -100,7 +108,7 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                     tf.log(tf.add(tf.divide(counts, tf.reduce_sum(counts)), tf.constant(1.02)))
                 )
 
-                binary_segmenatation_loss = self._compute_class_weighted_cross_entropy_loss(
+                binary_segmentation_loss = self._compute_class_weighted_cross_entropy_loss(
                     onehot_labels=binary_label_onehot,
                     logits=binary_seg_logits,
                     classes_weights=inverse_weights
@@ -112,21 +120,23 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                 pix_bn = tf.layers.batch_normalization(
                     inputs=instance_seg_logits, training=self._is_training, name='pix_bn')
                 pix_relu = tf.nn.relu(pix_bn, name='pix_relu')
-                pix_embedding = self.conv2d(
-                    inputdata=pix_relu,
-                    out_channel=CFG.TRAIN.EMBEDDING_FEATS_DIMS,
-                    padding='SAME',
-                    kernel_size=1,
-                    use_bias=False,
-                    name='pix_embedding_conv'
-                )
-                pix_image_shape = (pix_embedding.get_shape().as_list()[1], pix_embedding.get_shape().as_list()[2])
+                pix_embedding = tf.layers.conv2d(inputs=pix_relu, 
+                                                           filters=CFG.TRAIN.EMBEDDING_FEATS_DIMS, 
+                                                            kernel_size=[1, 1], 
+                                                            data_format = "channels_first",
+                                                            activation=None, 
+                                                            use_bias=False,
+                                                            kernel_regularizer=tf.contrib.layers.l2_regularizer(0.0004),
+                                                            padding="SAME",
+                                                            name = 'pix_embedding_conv')
+                print(pix_embedding.get_shape().as_list())
+                pix_image_shape = (pix_embedding.get_shape().as_list()[2], pix_embedding.get_shape().as_list()[3])
                 instance_segmentation_loss, l_var, l_dist, l_reg = \
                     lanenet_discriminative_loss.discriminative_loss(
                         pix_embedding, instance_label, CFG.TRAIN.EMBEDDING_FEATS_DIMS,
                         pix_image_shape, 0.5, 3.0, 1.0, 1.0, 0.001
                     )
-
+            pix_embedding = tf.transpose(pix_embedding,[0,2,3,1])
             l2_reg_loss = tf.constant(0.0, tf.float32)
             for vv in tf.trainable_variables():
                 if 'bn' in vv.name or 'gn' in vv.name:
@@ -134,13 +144,13 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                 else:
                     l2_reg_loss = tf.add(l2_reg_loss, tf.nn.l2_loss(vv))
             l2_reg_loss *= 0.001
-            total_loss = binary_segmenatation_loss + instance_segmentation_loss + l2_reg_loss
+            total_loss = binary_segmentation_loss + instance_segmentation_loss + l2_reg_loss
 
             ret = {
                 'total_loss': total_loss,
                 'binary_seg_logits': binary_seg_logits,
                 'instance_seg_logits': pix_embedding,
-                'binary_seg_loss': binary_segmenatation_loss,
+                'binary_seg_loss': binary_segmentation_loss,
                 'discriminative_loss': instance_segmentation_loss
             }
 
@@ -165,12 +175,13 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
 
                 pix_bn = tf.layers.batch_normalization(
                     inputs=instance_seg_logits, training=self._is_training, name='pix_bn')
-                pix_relu = tf.nn.relu6(pix_bn, name='pix_relu',axis=-1)
+                pix_relu = tf.nn.relu6(pix_bn, name='pix_relu')
                 instance_seg_prediction = tf.layers.conv2d(inputs=pix_relu, 
                                                            filters=CFG.TRAIN.EMBEDDING_FEATS_DIMS, 
                                                             kernel_size=[1, 1], 
-                                                            data_format = "channels_last",
+                                                            data_format = "channels_first",
                                                             activation=None, 
+                                                            use_bias=False,
                                                             kernel_regularizer=tf.contrib.layers.l2_regularizer(0.0004),
                                                             padding="SAME",
                                                             name = 'pix_embedding_conv')
