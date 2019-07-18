@@ -167,8 +167,9 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
         with tf.variable_scope(name_or_scope=name, reuse=reuse):
 
             with tf.variable_scope(name_or_scope='binary_seg'):
-                binary_seg_score = tf.nn.softmax(logits=binary_seg_logits, axis=1)
-                binary_seg_prediction = tf.argmax(binary_seg_score, axis=1)
+                binary_seg_logits = tf.transpose(binary_seg_logits, [0,2,3,1])
+                binary_seg_score = tf.nn.softmax(logits=binary_seg_logits, axis=-1)
+                binary_seg_prediction = tf.argmax(binary_seg_score, axis=-1)
 
             with tf.variable_scope(name_or_scope='instance_seg'):
 
@@ -184,5 +185,6 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                                                             kernel_regularizer=tf.contrib.layers.l2_regularizer(0.0004),
                                                             padding="SAME",
                                                             name = 'pix_embedding_conv')
+                instance_seg_prediction = tf.transpose(instance_seg_prediction, [0,2,3,1])
 
         return binary_seg_prediction, instance_seg_prediction
