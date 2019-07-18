@@ -23,7 +23,7 @@ from config import global_config
 from data_provider import lanenet_data_feed_pipline
 from lanenet_model import lanenet
 from tools import evaluate_model_utils
-
+from tensorflow.core.protobuf import rewriter_config_pb2
 CFG = global_config.cfg
 
 
@@ -393,6 +393,8 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg'):
 
     # Set sess configuration
     sess_config = tf.ConfigProto(allow_soft_placement=True)
+    off = rewriter_config_pb2.RewriterConfig.OFF
+    sess_config.graph_options.rewrite_options.arithmetic_optimization = off
     sess_config.gpu_options.per_process_gpu_memory_fraction = CFG.TRAIN.GPU_MEMORY_FRACTION
     sess_config.gpu_options.allow_growth = CFG.TRAIN.TF_ALLOW_GROWTH
     sess_config.gpu_options.allocator_type = 'BFC'
@@ -710,6 +712,8 @@ if __name__ == '__main__':
 
     # train lanenet
     if not args.multi_gpus:
+        print("======= single gpu training =======")
         train_lanenet(args.dataset_dir, args.weights_path, net_flag=args.net_flag)
     else:
+        print("======= multi-gpu training =======")
         train_lanenet_multi_gpu(args.dataset_dir, args.weights_path, net_flag=args.net_flag)
