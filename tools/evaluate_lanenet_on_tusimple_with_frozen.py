@@ -37,7 +37,7 @@ def init_args():
     parser.add_argument('--image_dir', type=str, help='The source tusimple lane test data dir')
     parser.add_argument('--weights_path', type=str, help='The model weights path')
     parser.add_argument('--save_dir', type=str, help='The test output save root dir')
-     parser.add_argument('--net', type=str, help='The backbone architecture')
+    parser.add_argument('--net', type=str, help='The backbone architecture')
 
     return parser.parse_args()
 
@@ -76,15 +76,15 @@ def test_lanenet_batch(src_dir, weights_path, save_dir, net_flag):
 
     input_tensor = graph.get_tensor_by_name('prefix/input_tensor:0')
     
-    binary_seg_ret = graph.get_tensor_by_name('prefix/lanenet_model/'+net+'_backend/binary_seg/ArgMax:0')
-    instance_seg_ret = graph.get_tensor_by_name('prefix/lanenet_model/'+ net +'_backend/instance_seg/pix_embedding_conv/Conv2D:0')
+    binary_seg_ret = graph.get_tensor_by_name('prefix/lanenet_model/'+net_flag+'_backend/binary_seg/ArgMax:0')
+    instance_seg_ret = graph.get_tensor_by_name('prefix/lanenet_model/'+ net_flag +'_backend/instance_seg/pix_embedding_conv/Conv2D:0')
 
     postprocessor = lanenet_postprocess.LaneNetPostProcessor()
 
 
     # Set sess configuration
     sess_config = tf.ConfigProto()
-    sess_config.gpu_options.per_process_gpu_memory_fraction = 0.5 #CFG.TEST.GPU_MEMORY_FRACTION
+    sess_config.gpu_options.per_process_gpu_memory_fraction = CFG.TEST.GPU_MEMORY_FRACTION
     sess_config.gpu_options.allow_growth = CFG.TRAIN.TF_ALLOW_GROWTH
     sess_config.gpu_options.allocator_type = 'BFC'
 
@@ -100,14 +100,17 @@ def test_lanenet_batch(src_dir, weights_path, save_dir, net_flag):
             image_vis = image
             image = cv2.resize(image, (512, 256), interpolation=cv2.INTER_LINEAR)
             image = image / 127.5 - 1.0
-
+            image = np.transpose(image, (2,0,1))
             t_start = time.time()
             binary_seg_image, instance_seg_image = sess.run(
                 [binary_seg_ret, instance_seg_ret],
                 feed_dict={input_tensor: [image]}
             )
             avg_time_cost.append(time.time() - t_start)
-
+            #print(binary_seg_image.shape)
+            #print(instance_seg_image.shape)
+            #binary_seg_image = np.transpose(binary_seg_image,(0,2,3,1))
+            instance_seg_image = np.transpose(instance_seg_image,(0,2,3,1))
             postprocess_result = postprocessor.postprocess(
                 binary_seg_result=binary_seg_image[0],
                 instance_seg_result=instance_seg_image[0],
