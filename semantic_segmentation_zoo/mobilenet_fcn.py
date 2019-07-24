@@ -158,7 +158,7 @@ class MOBILENETFCN(cnn_basenet.CNNBaseModel):
         with  slim.arg_scope([slim.dropout], is_training=self._is_training, keep_prob=0.99):
              
 
-            with tf.variable_scope('binary_seg'):
+            with tf.variable_scope('lane_seg'):
                 net = self._net_intermediate_results['shared_encoding']['net']
 
                 res4 = tf.layers.conv2d(inputs=res4,
@@ -211,20 +211,12 @@ class MOBILENETFCN(cnn_basenet.CNNBaseModel):
                 
                 net = tf.layers.conv2d_transpose(inputs = net, filters = 64, kernel_size = [2,2], padding = "SAME", data_format="channels_first",strides =2)
                 net = self.block_upsample(net=net,  output_filters=64,  stride=1,name = "up5")
-                net = tf.layers.conv2d(inputs=net, 
-                                        filters=2, 
-                                        kernel_size=[1, 1], 
-                                        data_format = "channels_first",
-                                        activation=None, 
-                                        kernel_regularizer=tf.contrib.layers.l2_regularizer(0.0004),
-                                        padding="SAME",
-                                        name = name + "_projection")
-                self._net_intermediate_results['binary_segment_logits'] = {
+                self._net_intermediate_results['lane_segment_logits'] = {
                         'data': net,
                         'shape': net.get_shape().as_list()}
             
             
-            with tf.variable_scope('instance_seg'):
+            with tf.variable_scope('drive_seg'):
                 net = self._net_intermediate_results['shared_encoding']['net']
 
                 res4 = tf.layers.conv2d(inputs=res4,
@@ -281,7 +273,7 @@ class MOBILENETFCN(cnn_basenet.CNNBaseModel):
                 
                 net = tf.layers.conv2d_transpose(inputs = net, filters = 64, kernel_size = [2,2], padding = "SAME", data_format="channels_first",strides =2)
                 net = self.block_upsample(net=net,  output_filters=64,  stride=1, name = "up5")
-                self._net_intermediate_results['instance_segment_logits'] = {
+                self._net_intermediate_results['drive_segment_logits'] = {
                         'data': net,
                         'shape': net.get_shape().as_list()}
     def build_model(self, input_tensor, name, reuse=False):

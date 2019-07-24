@@ -243,22 +243,22 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg'):
             instance_label=train_instance_labels, name='lanenet_model'
         )
         train_total_loss = train_compute_ret['total_loss']
-        train_binary_seg_loss = train_compute_ret['binary_seg_loss']
+        train_binary_seg_loss = train_compute_ret['lane_seg_loss']
         train_disc_loss = train_compute_ret['discriminative_loss']
-        train_pix_embedding = train_compute_ret['instance_seg_logits']
+        train_pix_embedding = train_compute_ret['drive_seg_logits']
 
-        train_prediction_logits = train_compute_ret['binary_seg_logits']
+        train_prediction_logits = train_compute_ret['lane_seg_logits']
         train_prediction_score = tf.nn.softmax(logits=train_prediction_logits)
         train_prediction = tf.argmax(train_prediction_score, axis=3)
 
         train_accuracy = evaluate_model_utils.calculate_model_precision(
-            train_compute_ret['binary_seg_logits'], train_binary_labels
+            train_compute_ret['lane_seg_logits'], train_binary_labels
         )
         train_fp = evaluate_model_utils.calculate_model_fp(
-            train_compute_ret['binary_seg_logits'], train_binary_labels
+            train_compute_ret['lane_seg_logits'], train_binary_labels
         )
         train_fn = evaluate_model_utils.calculate_model_fn(
-            train_compute_ret['binary_seg_logits'], train_binary_labels
+            train_compute_ret['lane_seg_logits'], train_binary_labels
         )
         train_binary_seg_ret_for_summary = evaluate_model_utils.get_image_summary(
             img=train_prediction
@@ -307,22 +307,22 @@ def train_lanenet(dataset_dir, weights_path=None, net_flag='vgg'):
             instance_label=val_instance_labels, name='lanenet_model'
         )
         val_total_loss = val_compute_ret['total_loss']
-        val_binary_seg_loss = val_compute_ret['binary_seg_loss']
+        val_binary_seg_loss = val_compute_ret['lane_seg_loss']
         val_disc_loss = val_compute_ret['discriminative_loss']
-        val_pix_embedding = val_compute_ret['instance_seg_logits']
+        val_pix_embedding = val_compute_ret['drive_seg_logits']
 
-        val_prediction_logits = val_compute_ret['binary_seg_logits']
+        val_prediction_logits = val_compute_ret['lane_seg_logits']
         val_prediction_score = tf.nn.softmax(logits=val_prediction_logits)
         val_prediction = tf.argmax(val_prediction_score, axis=3)
 
         val_accuracy = evaluate_model_utils.calculate_model_precision(
-            val_compute_ret['binary_seg_logits'], val_binary_labels
+            val_compute_ret['lane_seg_logits'], val_binary_labels
         )
         val_fp = evaluate_model_utils.calculate_model_fp(
-            val_compute_ret['binary_seg_logits'], val_binary_labels
+            val_compute_ret['lane_seg_logits'], val_binary_labels
         )
         val_fn = evaluate_model_utils.calculate_model_fn(
-            val_compute_ret['binary_seg_logits'], val_binary_labels
+            val_compute_ret['lane_seg_logits'], val_binary_labels
         )
         val_binary_seg_ret_for_summary = evaluate_model_utils.get_image_summary(
             img=val_prediction

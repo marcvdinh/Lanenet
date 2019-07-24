@@ -67,8 +67,8 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
 
         return loss
 
-    def compute_loss(self, binary_seg_logits, binary_label,
-                     instance_seg_logits, instance_label,
+    def compute_loss(self, lane_seg_logits, lane_label,
+                     drive_seg_logits, drive_label,
                      name, reuse):
         """
         compute lanenet loss
@@ -82,42 +82,11 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
         """
         with tf.variable_scope(name_or_scope=name, reuse=reuse):
             # calculate class weighted binary seg loss
-            with tf.variable_scope(name_or_scope='binary_seg'):
-                binary_label_onehot = tf.one_hot(
-                                    tf.reshape(
-                                        tf.cast(binary_label, tf.int32),
-                                        shape=[binary_label.get_shape().as_list()[0],
-                                        binary_label.get_shape().as_list()[2],
-                                        binary_label.get_shape().as_list()[3]]),
-                                depth=CFG.TRAIN.CLASSES_NUMS,
-                                axis=1
-                                )
-
-                binary_label_plain = tf.reshape(
-                    binary_label,
-                    shape=[binary_label.get_shape().as_list()[0] *
-                           binary_label.get_shape().as_list()[1] *
-                           binary_label.get_shape().as_list()[2] *
-                           binary_label.get_shape().as_list()[3]])
-                unique_labels, unique_id, counts = tf.unique_with_counts(binary_label_plain)
-                counts = tf.cast(counts, tf.float32)
-                inverse_weights = tf.divide(
-                    1.0,
-                    tf.log(tf.add(tf.divide(counts, tf.reduce_sum(counts)), tf.constant(1.02)))
-                )
-                binary_label_onehot = tf.transpose(binary_label_onehot, [0,2,3,1])
-                binary_seg_logits = tf.transpose(binary_seg_logits, [0,2,3,1]) 
-                binary_segmentation_loss = self._compute_class_weighted_cross_entropy_loss(
-                    onehot_labels=binary_label_onehot,
-                    logits=binary_seg_logits,
-                    classes_weights=inverse_weights
-                )
-
-            # calculate class weighted instance seg loss
-            with tf.variable_scope(name_or_scope='instance_seg'):
+# calculate class weighted instance seg loss
+            with tf.variable_scope(name_or_scope='lane_seg'):
 
                 pix_bn = tf.layers.batch_normalization(
-                    inputs=instance_seg_logits, training=self._is_training, name='pix_bn')
+                    inputs=lane_seg_logits, training=self._is_training, name='pix_bn', axis=1)
                 pix_relu = tf.nn.relu(pix_bn, name='pix_relu')
                 pix_embedding = tf.layers.conv2d(inputs=pix_relu, 
                                                            filters=CFG.TRAIN.EMBEDDING_FEATS_DIMS, 
@@ -128,12 +97,35 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                                                             kernel_regularizer=tf.contrib.layers.l2_regularizer(0.0004),
                                                             padding="SAME",
                                                             name = 'pix_embedding_conv')
-                pix_embedding = tf.transpose(pix_embedding,[0,2,3,1])
-                pix_image_shape = (pix_embedding.get_shape().as_list()[1], pix_embedding.get_shape().as_list()[2])
-                instance_segmentation_loss, l_var, l_dist, l_reg = \
+                lane_embedding = tf.transpose(pix_embedding,[0,2,3,1])
+                lane_image_shape = (lane_embedding.get_shape().as_list()[1], lane_embedding.get_shape().as_list()[2])
+                lane_segmentation_loss, l_var, l_dist, l_reg = \
                     lanenet_discriminative_loss.discriminative_loss(
-                        pix_embedding, instance_label, CFG.TRAIN.EMBEDDING_FEATS_DIMS,
-                        pix_image_shape, 0.5, 3.0, 1.0, 1.0, 0.001
+                        lane_embedding, lane_label, CFG.TRAIN.EMBEDDING_FEATS_DIMS,
+                        lane_image_shape, 0.5, 3.0, 1.0, 1.0, 0.001
+                    )
+
+            # calculate class weighted instance seg loss
+            with tf.variable_scope(name_or_scope='drive_seg'):
+
+                pix_bn = tf.layers.batch_normalization(
+                    inputs=drive_seg_logits, training=self._is_training, name='pix_bn', axis=1)
+                pix_relu = tf.nn.relu(pix_bn, name='pix_relu')
+                pix_embedding = tf.layers.conv2d(inputs=pix_relu, 
+                                                           filters=CFG.TRAIN.EMBEDDING_FEATS_DIMS, 
+                                                            kernel_size=[1, 1], 
+                                                            data_format = "channels_first",
+                                                            activation=None, 
+                                                            use_bias=False,
+                                                            kernel_regularizer=tf.contrib.layers.l2_regularizer(0.0004),
+                                                            padding="SAME",
+                                                            name = 'pix_embedding_conv')
+                drive_embedding = tf.transpose(pix_embedding,[0,2,3,1])
+                drive_image_shape = (drive_embedding.get_shape().as_list()[1], drive_embedding.get_shape().as_list()[2])
+                drive_segmentation_loss, l_var, l_dist, l_reg = \
+                    lanenet_discriminative_loss.discriminative_loss(
+                        drive_embedding, drive_label, CFG.TRAIN.EMBEDDING_FEATS_DIMS,
+                        drive_image_shape, 0.5, 3.0, 1.0, 1.0, 0.001
                     )
             
             l2_reg_loss = tf.constant(0.0, tf.float32)
@@ -143,19 +135,19 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                 else:
                     l2_reg_loss = tf.add(l2_reg_loss, tf.nn.l2_loss(vv))
             l2_reg_loss *= 0.001
-            total_loss = binary_segmentation_loss + instance_segmentation_loss + l2_reg_loss
+            total_loss = lane_segmentation_loss + drive_segmentation_loss + l2_reg_loss
 
             ret = {
                 'total_loss': total_loss,
-                'binary_seg_logits': binary_seg_logits,
-                'instance_seg_logits': pix_embedding,
-                'binary_seg_loss': binary_segmentation_loss,
-                'discriminative_loss': instance_segmentation_loss
+                'lane_seg_logits': lane_embedding,
+                'drive_seg_logits': drive_embedding,
+                'binary_seg_loss': lane_segmentation_loss,
+                'discriminative_loss': drive_segmentation_loss
             }
 
         return ret
 
-    def inference(self, binary_seg_logits, instance_seg_logits, name, reuse):
+    def inference(self, lane_seg_logits, drive_seg_logits, name, reuse):
         """
 
         :param binary_seg_logits:
@@ -166,17 +158,11 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
         """
         with tf.variable_scope(name_or_scope=name, reuse=reuse):
 
-            with tf.variable_scope(name_or_scope='binary_seg'):
-                binary_seg_logits = tf.transpose(binary_seg_logits, [0,2,3,1])
-                binary_seg_score = tf.nn.softmax(logits=binary_seg_logits, axis=-1)
-                binary_seg_prediction = tf.argmax(binary_seg_score, axis=-1)
-
-            with tf.variable_scope(name_or_scope='instance_seg'):
-
+            with tf.variable_scope(name_or_scope='lane_seg'):
                 pix_bn = tf.layers.batch_normalization(
-                    inputs=instance_seg_logits, training=self._is_training, name='pix_bn')
+                    inputs=lane_seg_logits, training=self._is_training, name='pix_bn', axis=1)
                 pix_relu = tf.nn.relu6(pix_bn, name='pix_relu')
-                instance_seg_prediction = tf.layers.conv2d(inputs=pix_relu, 
+                lane_seg_prediction = tf.layers.conv2d(inputs=pix_relu, 
                                                            filters=CFG.TRAIN.EMBEDDING_FEATS_DIMS, 
                                                             kernel_size=[1, 1], 
                                                             data_format = "channels_first",
@@ -185,6 +171,22 @@ class LaneNetBackEnd(cnn_basenet.CNNBaseModel):
                                                             kernel_regularizer=tf.contrib.layers.l2_regularizer(0.0004),
                                                             padding="SAME",
                                                             name = 'pix_embedding_conv')
-                instance_seg_prediction = tf.transpose(instance_seg_prediction, [0,2,3,1])
+                lane_seg_prediction = tf.transpose(instance_seg_prediction, [0,2,3,1])
 
-        return binary_seg_prediction, instance_seg_prediction
+            with tf.variable_scope(name_or_scope='drive_seg'):
+
+                pix_bn = tf.layers.batch_normalization(
+                    inputs=drive_seg_logits, training=self._is_training, name='pix_bn', axis=1)
+                pix_relu = tf.nn.relu6(pix_bn, name='pix_relu')
+                drive_seg_prediction = tf.layers.conv2d(inputs=pix_relu, 
+                                                           filters=CFG.TRAIN.EMBEDDING_FEATS_DIMS, 
+                                                            kernel_size=[1, 1], 
+                                                            data_format = "channels_first",
+                                                            activation=None, 
+                                                            use_bias=False,
+                                                            kernel_regularizer=tf.contrib.layers.l2_regularizer(0.0004),
+                                                            padding="SAME",
+                                                            name = 'pix_embedding_conv')
+                drive_seg_prediction = tf.transpose(instance_seg_prediction, [0,2,3,1])
+
+        return lane_seg_prediction, drive_seg_prediction
